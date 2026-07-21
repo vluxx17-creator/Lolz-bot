@@ -15,7 +15,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 logging.basicConfig(level=logging.INFO)
 
-# ---------- Премиум-эмодзи для текста (из задания) ----------
+# ---------- Премиум-эмодзи для текста (HTML) ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
@@ -33,7 +33,6 @@ CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
 CUSTOM_EMOJI_SITE      = "5258503720928288433"   # ℹ️
 CUSTOM_EMOJI_MESSAGE   = "6084717714847306634"   # 📌
 
-# ---------- Команда /start ----------
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     text = (
@@ -52,7 +51,6 @@ async def cmd_start(message: types.Message):
         f"<b>Мои реквизиты:</b>"
     )
 
-    # ---------- Инлайн-клавиатура с премиум-эмодзи ----------
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -100,7 +98,6 @@ async def cmd_start(message: types.Message):
     await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-# ---------- Обработчики нажатий ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     await callback.answer("💰 Ваш баланс: 0.00 ₽", show_alert=True)
@@ -126,6 +123,5 @@ async def cb_message(callback: types.CallbackQuery):
     await callback.answer("✍️ Отправьте ваше сообщение в этот чат", show_alert=True)
 
 
-# ---------- Запуск ----------
 if __name__ == "__main__":
     dp.run_polling(bot)
