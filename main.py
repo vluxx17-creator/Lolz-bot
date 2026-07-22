@@ -36,7 +36,7 @@ temp_admins = {}
 logs = []
 
 # ============================================================
-# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (с HTML-тегами)
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (ТОЛЬКО ЗДЕСЬ)
 # ============================================================
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
@@ -48,22 +48,22 @@ EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
 
 # ============================================================
-# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (чистые ID без HTML)
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (ТОЛЬКО ЗДЕСЬ)
 # ============================================================
-CUSTOM_EMOJI_BALANCE    = "6041730074376410123"  # 📥
-CUSTOM_EMOJI_DEALS      = "5417924076503062111"  # 💰
-CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"  # 🤝
-CUSTOM_EMOJI_LANG       = "5197269100878907942"  # ✍️
-CUSTOM_EMOJI_REQUISITES = "6084717714847306634"  # 📌
-CUSTOM_EMOJI_CREATE     = "6084717714847306634"  # 📌
-CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"  # 🌐
-CUSTOM_EMOJI_COPY       = "6084717714847306634"  # 📌
-CUSTOM_EMOJI_BACK       = "5197269100878907942"  # ✍️
-CUSTOM_EMOJI_SEARCH     = "6084717714847306634"  # 📌
-CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"  # 📥
-CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"  # 📦
+CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
+CUSTOM_EMOJI_DEALS      = "5417924076503062111"
+CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
+CUSTOM_EMOJI_LANG       = "5197269100878907942"
+CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
+CUSTOM_EMOJI_CREATE     = "6084717714847306634"
+CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"
+CUSTOM_EMOJI_COPY       = "6084717714847306634"
+CUSTOM_EMOJI_BACK       = "5197269100878907942"
+CUSTOM_EMOJI_SEARCH     = "6084717714847306634"
+CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"
+CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"
 
-# ---------- Тексты (везде премиум-эмодзи из переменных) ----------
+# ---------- Тексты (ТОЛЬКО EMOJI_*) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
@@ -132,6 +132,7 @@ TEXTS = {
                        f"/ref [код] — уведомить о проблеме с подарком\n"
                        f"/boost_success [число] — увеличить счётчик успешных сделок\n"
                        f"/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
+                       f"/addbalance [id] [сумма] — начислить баланс\n"
                        f"/logs — просмотр логов",
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
@@ -151,6 +152,9 @@ TEXTS = {
         'boost_fail': "Введите число.",
         'giveadmin_success': f"{EMOJI_SHIELD} Пользователь {{user}} получил права администратора на {{time_str}}.",
         'giveadmin_fail': "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
+        'addbalance_success': f"{EMOJI_MONEY} Пользователю {{user}} начислено {{amount}} TON. Новый баланс: {{new_balance}} TON.",
+        'addbalance_fail': "Неверный формат. Используйте: /addbalance [id] [сумма]",
+        'addbalance_user_not_found': "Пользователь с ID {user} не найден.",
         'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
         'logs_entry': "{time} | {user} | {action} | {data}",
@@ -220,6 +224,7 @@ TEXTS = {
                        f"/ref [code] — notify about gift issue\n"
                        f"/boost_success [number] — increase successful deals count\n"
                        f"/giveadmin [@user or id] [time] — grant admin (1m,1h,1d,1w,1M,1y)\n"
+                       f"/addbalance [id] [amount] — add balance\n"
                        f"/logs — view logs",
         'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
         'admin_withdraw_list': "Withdrawal requests:\n{list}",
@@ -239,6 +244,9 @@ TEXTS = {
         'boost_fail': "Enter a number.",
         'giveadmin_success': f"{EMOJI_SHIELD} User {{user}} granted admin rights for {{time_str}}.",
         'giveadmin_fail': "Invalid time format. Use: 1m, 1h, 1d, 1w, 1M, 1y",
+        'addbalance_success': f"{EMOJI_MONEY} User {{user}} got {{amount}} TON. New balance: {{new_balance}} TON.",
+        'addbalance_fail': "Invalid format. Use: /addbalance [id] [amount]",
+        'addbalance_user_not_found': "User with ID {user} not found.",
         'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
         'logs_empty': "No logs yet.",
         'logs_entry': "{time} | {user} | {action} | {data}",
@@ -606,6 +614,7 @@ async def cmd_hyteam(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Заявки на вывод", callback_data="admin_withdraw")],
         [InlineKeyboardButton(text="Выдать админку", callback_data="admin_give")],
+        [InlineKeyboardButton(text="Накрутить баланс", callback_data="admin_addbalance")],
         [InlineKeyboardButton(text="Логи", callback_data="admin_logs")],
         [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")]
     ])
@@ -631,6 +640,16 @@ async def admin_give_cb(callback: types.CallbackQuery):
     await callback.message.answer(text)
     await callback.answer()
 
+@dp.callback_query(lambda c: c.data == "admin_addbalance")
+async def admin_addbalance_cb(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    text = "Введите команду: /addbalance [id пользователя] [сумма]\nПример: /addbalance 123456789 100"
+    await callback.message.answer(text)
+    await callback.answer()
+
 @dp.callback_query(lambda c: c.data == "admin_logs")
 async def admin_logs_cb(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -640,6 +659,36 @@ async def admin_logs_cb(callback: types.CallbackQuery):
     await cmd_logs(callback.message)
     await callback.answer()
 
+# ---------- Команда накрутки баланса ----------
+@dp.message(Command("addbalance"))
+async def cmd_addbalance(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer(get_text(user_id, 'addbalance_fail'))
+        return
+    try:
+        target_user_id = int(args[1])
+        amount = float(args[2].replace(',', '.'))
+    except ValueError:
+        await message.answer(get_text(user_id, 'addbalance_fail'))
+        return
+    if target_user_id not in user_balance:
+        await message.answer(get_text(user_id, 'addbalance_user_not_found').format(user=target_user_id))
+        return
+    user_balance[target_user_id] = user_balance.get(target_user_id, 0.0) + amount
+    new_balance = user_balance[target_user_id]
+    await message.answer(get_text(user_id, 'addbalance_success').format(
+        user=target_user_id,
+        amount=amount,
+        new_balance=new_balance
+    ))
+    log_action(user_id, "addbalance", f"пользователю {target_user_id} +{amount} TON")
+
+# ---------- Остальные админ-команды ----------
 @dp.message(Command("vvteam"))
 async def cmd_vvteam(message: types.Message):
     user_id = message.from_user.id
