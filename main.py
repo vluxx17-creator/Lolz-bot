@@ -1,11 +1,9 @@
 import os
 import logging
 import asyncio
-import io
-import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from aiohttp import web
 
@@ -15,14 +13,13 @@ TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN не задан в .env")
 
-# ---------- URL баннера из переменной окружения (с fallback) ----------
 BANNER_URL = os.getenv("BANNER_URL", "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 logging.basicConfig(level=logging.INFO)
 
-# ---------- Премиум-эмодзи для текста ----------
+# ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
 EMOJI_SHIELD    = '<tg-emoji emoji-id="5794085322400733645">🛡</tg-emoji>'
@@ -69,28 +66,21 @@ async def cmd_start(message: types.Message):
         ]
     ])
 
-    # ---------- Отправка баннера с правильными заголовками ----------
+    # ---------- Отправка баннера по URL ----------
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(BANNER_URL, timeout=10) as resp:
-                if resp.status == 200:
-                    photo_data = await resp.read()
-                    photo = InputFile(io.BytesIO(photo_data), filename="banner.jpg")
-                    await message.answer_photo(
-                        photo=photo,
-                        caption=text,
-                        parse_mode="HTML",
-                        reply_markup=keyboard
-                    )
-                else:
-                    logging.error(f"Баннер не загружен: статус {resp.status}")
-                    await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        await message.answer_photo(
+            photo=BANNER_URL,
+            caption=text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
     except Exception as e:
-        logging.error(f"Ошибка при скачивании баннера: {e}")
+        logging.error(f"Ошибка при отправке баннера: {e}")
+        # Если баннер не отправился — отправляем только текст
         await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
+# ---------- Обработчики кнопок ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     await callback.answer("💰 Баланс: 0.00 ₽", show_alert=True)
