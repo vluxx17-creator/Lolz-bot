@@ -35,7 +35,9 @@ user_last_message = {}
 temp_admins = {}
 logs = []
 
-# ---------- Премиум-эмодзи (все ID из задания) ----------
+# ============================================================
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (с HTML-тегами)
+# ============================================================
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
@@ -45,21 +47,23 @@ EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
 
-# ID для кнопок (премиум)
-CUSTOM_EMOJI_BALANCE   = "6041730074376410123"
-CUSTOM_EMOJI_DEALS     = "5417924076503062111"
-CUSTOM_EMOJI_REFERRALS = "5357080225463149588"
-CUSTOM_EMOJI_LANG      = "5197269100878907942"
-CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
-CUSTOM_EMOJI_CREATE    = "6084717714847306634"
-CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"
-CUSTOM_EMOJI_COPY      = "6084717714847306634"
-CUSTOM_EMOJI_BACK      = "5197269100878907942"
-CUSTOM_EMOJI_SEARCH    = "6084717714847306634"
-CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"
-CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"
+# ============================================================
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (чистые ID без HTML)
+# ============================================================
+CUSTOM_EMOJI_BALANCE    = "6041730074376410123"  # 📥
+CUSTOM_EMOJI_DEALS      = "5417924076503062111"  # 💰
+CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"  # 🤝
+CUSTOM_EMOJI_LANG       = "5197269100878907942"  # ✍️
+CUSTOM_EMOJI_REQUISITES = "6084717714847306634"  # 📌
+CUSTOM_EMOJI_CREATE     = "6084717714847306634"  # 📌
+CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"  # 🌐
+CUSTOM_EMOJI_COPY       = "6084717714847306634"  # 📌
+CUSTOM_EMOJI_BACK       = "5197269100878907942"  # ✍️
+CUSTOM_EMOJI_SEARCH     = "6084717714847306634"  # 📌
+CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"  # 📥
+CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"  # 📦
 
-# ---------- Тексты (без угловых скобок в HTML-текстах) ----------
+# ---------- Тексты (везде премиум-эмодзи из переменных) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
@@ -295,7 +299,6 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
         user_last_message[user_id] = msg.message_id
     except Exception as e:
         logging.error(f"Ошибка отправки баннера: {e}")
-        # Если ошибка из-за parse_mode, пробуем отправить без HTML
         try:
             if isinstance(target, types.Message):
                 msg = await target.answer(text, parse_mode=None, reply_markup=keyboard)
@@ -304,7 +307,6 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
             user_last_message[user_id] = msg.message_id
         except Exception as e2:
             logging.error(f"Ошибка отправки текста: {e2}")
-            # Последний шанс: отправить просто текст без разметки и без клавиатуры
             if isinstance(target, types.Message):
                 msg = await target.answer("Произошла ошибка. Попробуйте позже.")
             else:
@@ -562,7 +564,7 @@ async def cb_back_to_menu(callback: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "requisites")
 async def cb_requisites(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = "💳 Реквизиты: карта ****, BTC..." if user_lang.get(user_id, 'ru') == 'ru' else "💳 Requisites: card ****, BTC..."
+    text = f"{EMOJI_MONEY} Реквизиты: карта ****, BTC..." if user_lang.get(user_id, 'ru') == 'ru' else f"{EMOJI_MONEY} Requisites: card ****, BTC..."
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
@@ -573,7 +575,7 @@ async def cb_requisites(callback: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = "✍️ Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else "✍️ Create deal (stub)"
+    text = f"{EMOJI_PACKAGE} Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else f"{EMOJI_PACKAGE} Create deal (stub)"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
@@ -602,10 +604,10 @@ async def cmd_hyteam(message: types.Message):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Заявки на вывод", callback_data="admin_withdraw")],
-        [InlineKeyboardButton(text="👥 Выдать админку", callback_data="admin_give")],
-        [InlineKeyboardButton(text="📊 Логи", callback_data="admin_logs")],
-        [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="Заявки на вывод", callback_data="admin_withdraw")],
+        [InlineKeyboardButton(text="Выдать админку", callback_data="admin_give")],
+        [InlineKeyboardButton(text="Логи", callback_data="admin_logs")],
+        [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")]
     ])
     await send_with_banner(message, get_text(user_id, 'admin_panel'), keyboard)
     log_action(user_id, "hyteam", "открытие админ-панели")
@@ -825,7 +827,6 @@ async def cmd_giveadmin(message: types.Message):
     expiry = time.time() + duration
     target_user_id = None
     if target_str.startswith('@'):
-        # упрощённо – ищем по юзернейму в user_lang (заглушка)
         target_user_id = None
     else:
         try:
