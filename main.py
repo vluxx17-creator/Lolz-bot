@@ -1,11 +1,13 @@
 import os
 import logging
+import asyncio
+import io
+import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 from dotenv import load_dotenv
-import aiohttp
-import io
+from aiohttp import web
 
 load_dotenv()
 
@@ -33,16 +35,13 @@ CUSTOM_EMOJI_REFERRALS = "5357080225463149588"   # 🤝
 CUSTOM_EMOJI_LANG      = "5197269100878907942"   # ✍️
 CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
 CUSTOM_EMOJI_SITE      = "5258503720928288433"   # ℹ️
-CUSTOM_EMOJI_MESSAGE   = "6084717714847306634"   # 📌
-CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌 (для кнопки "Создать сделку")
+CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌
 
-# ---------- URL баннера ----------
 BANNER_URL = "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg"
 
 # ---------- Команда /start ----------
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Формируем текст с HTML-разметкой (жирный, курсив, цитата)
     text = (
         f"<b>{EMOJI_TROPHY} Добро пожаловать в Lolz Deals</b>\n\n"
         f"<b>{EMOJI_ROBOT} Ваш надёжный P2P-гарант:</b>\n"
@@ -54,7 +53,6 @@ async def cmd_start(message: types.Message):
         f"<blockquote><b>Мои реквизиты:</b> {EMOJI_LIGHTNING} <b>Создать сделку</b></blockquote>"
     )
 
-    # ---------- Симметричная инлайн-клавиатура (2 кнопки в ряду) ----------
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -94,39 +92,26 @@ async def cmd_start(message: types.Message):
         ]
     ])
 
-    # ---------- Отправка фото с подписью и клавиатурой ----------
+    # Скачиваем и отправляем фото через InputFile (работает с bytes)
     try:
-        # Скачиваем баннер из интернета
         async with aiohttp.ClientSession() as session:
             async with session.get(BANNER_URL) as resp:
                 if resp.status == 200:
                     photo_data = await resp.read()
-                    photo_file = io.BytesIO(photo_data)
-                    photo_file.name = "banner.jpg"
-                    
+                    photo = InputFile(io.BytesIO(photo_data), filename="banner.jpg")
                     await message.answer_photo(
-                        photo=FSInputFile(photo_file),
+                        photo=photo,
                         caption=text,
                         parse_mode="HTML",
                         reply_markup=keyboard
                     )
                 else:
-                    # Если баннер не загрузился — отправляем только текст
-                    await message.answer(
-                        text,
-                        parse_mode="HTML",
-                        reply_markup=keyboard
-                    )
-    except Exception:
-        # В случае любой ошибки с фото — отправляем только текст
-        await message.answer(
-            text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+                    await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка при отправке фото: {e}")
+        await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-# ---------- Обработчики нажатий ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     await callback.answer("💰 Ваш баланс: 0.00 ₽", show_alert=True)
@@ -148,6 +133,26 @@ async def cb_support(callback: types.CallbackQuery):
     await callback.answer("🛠 Связь с поддержкой: @LZSupportBot", show_alert=True)
 
 
+# ---------- HTTP-сервер для поддержания порта ----------
+async def health_check(request):
+    return web.Response(text="OK", status=200)
+
+async def start_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host="0.0.0.0", port=port)
+    await site.start()
+    logging.info(f"Web server started on port {port}")
+
 # ---------- Запуск ----------
+async def main():
+    # Запускаем веб-сервер в фоне
+    asyncio.create_task(start_web_server())
+    # Запускаем поллинг
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
-    dp.run_polling(bot)
+    asyncio.run(main())
