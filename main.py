@@ -19,8 +19,8 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 logging.basicConfig(level=logging.INFO)
 
-# ---------- Хранилище языков пользователей ----------
-user_lang = {}  # user_id: 'ru' или 'en'
+# ---------- Хранилище языков ----------
+user_lang = {}
 
 # ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
@@ -29,9 +29,9 @@ EMOJI_SHIELD    = '<tg-emoji emoji-id="5794085322400733645">🛡</tg-emoji>'
 EMOJI_MONEY     = '<tg-emoji emoji-id="5794280000383358988">💰</tg-emoji>'
 EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
-EMOJI_FLAG_RU   = '🇷🇺'   # обычный эмодзи
-EMOJI_FLAG_US   = '🇺🇸'   # обычный эмодзи
-EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'  # для красоты
+EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
+EMOJI_FLAG_RU   = '🇷🇺'
+EMOJI_FLAG_US   = '🇺🇸'
 
 # ---------- ID премиум-эмодзи для кнопок ----------
 CUSTOM_EMOJI_BALANCE   = "6041730074376410123"
@@ -41,10 +41,13 @@ CUSTOM_EMOJI_LANG      = "5197269100878907942"
 CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
 CUSTOM_EMOJI_CREATE    = "6084717714847306634"
 CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"
-CUSTOM_EMOJI_COPY      = "6084717714847306634"   # для кнопки "Скопировать"
-CUSTOM_EMOJI_BACK      = "5197269100878907942"   # для кнопки "Назад"
+CUSTOM_EMOJI_COPY      = "6084717714847306634"
+CUSTOM_EMOJI_BACK      = "5197269100878907942"
 
-# ---------- Тексты для разных языков ----------
+# ---------- Шаблон реферальной ссылки ----------
+REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
+
+# ---------- Тексты (без времени) ----------
 TEXTS = {
     'ru': {
         'welcome': (
@@ -57,33 +60,27 @@ TEXTS = {
             f"{EMOJI_MEGAPHONE} <b>Канал:</b> @LiveLolz"
         ),
         'lang_prompt': (
-            f"<b>{EMOJI_GLOSSARY} Выберите язык:</b>\n"
-            f"<i>изменено 22:58</i>"
+            f"<b>{EMOJI_GLOSSARY} Выберите язык:</b>"
         ),
         'lang_ru': "Русский",
         'lang_en': "English",
-        'referral_title': (
-            f"<b>{EMOJI_MONEY} Реферальная программа</b>"
-        ),
-        'referral_body': (
+        'referral': (
+            f"<b>{EMOJI_MONEY} Реферальная программа</b>\n\n"
             f"<blockquote><b>Ваша ссылка:</b>\n"
             f"<code>{REF_LINK_TEMPLATE}</code>\n"
             f"<b>Рефералов:</b> 0\n"
             f"<b>Заработано:</b> 0.0 TON</blockquote>\n\n"
-            f"<b>Бонус:</b> 50% от комиссии с каждой сделки реферала!\n"
-            f"<i>изменено 22:58</i>"
+            f"<b>Бонус:</b> 50% от комиссии с каждой сделки реферала!"
         ),
         'copy_btn': "Скопировать реф. ссылку",
         'back_btn': "Назад в меню",
-        'main_buttons': {
-            'balance': "Баланс",
-            'deals': "Мои сделки",
-            'referrals': "Рефералы",
-            'lang': "Язык / Lang",
-            'requisites': "Мои реквизиты",
-            'create': "Создать сделку",
-            'support': "Техподдержка"
-        }
+        'balance': "Баланс",
+        'deals': "Мои сделки",
+        'referrals_btn': "Рефералы",
+        'lang_btn': "Язык / Lang",
+        'requisites': "Мои реквизиты",
+        'create': "Создать сделку",
+        'support': "Техподдержка"
     },
     'en': {
         'welcome': (
@@ -96,97 +93,73 @@ TEXTS = {
             f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz"
         ),
         'lang_prompt': (
-            f"<b>{EMOJI_GLOSSARY} Select language:</b>\n"
-            f"<i>changed 22:58</i>"
+            f"<b>{EMOJI_GLOSSARY} Select language:</b>"
         ),
         'lang_ru': "Russian",
         'lang_en': "English",
-        'referral_title': (
-            f"<b>{EMOJI_MONEY} Referral program</b>"
-        ),
-        'referral_body': (
+        'referral': (
+            f"<b>{EMOJI_MONEY} Referral program</b>\n\n"
             f"<blockquote><b>Your referral link:</b>\n"
             f"<code>{REF_LINK_TEMPLATE}</code>\n"
             f"<b>Referrals:</b> 0\n"
             f"<b>Earned:</b> 0.0 TON</blockquote>\n\n"
-            f"<b>Bonus:</b> 50% of commission from each referral deal!\n"
-            f"<i>changed 22:58</i>"
+            f"<b>Bonus:</b> 50% of commission from each referral deal!"
         ),
         'copy_btn': "Copy referral link",
         'back_btn': "Back to menu",
-        'main_buttons': {
-            'balance': "Balance",
-            'deals': "My deals",
-            'referrals': "Referrals",
-            'lang': "Language / Lang",
-            'requisites': "My requisites",
-            'create': "Create deal",
-            'support': "Support"
-        }
+        'balance': "Balance",
+        'deals': "My deals",
+        'referrals_btn': "Referrals",
+        'lang_btn': "Language / Lang",
+        'requisites': "My requisites",
+        'create': "Create deal",
+        'support': "Support"
     }
 }
 
-# Шаблон ссылки (замените @lolzgaranterbot на актуальное имя бота)
-REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
-
 # ---------- Вспомогательные функции ----------
-def get_text(user_id: int, key: str, **kwargs) -> str:
+def get_text(user_id: int, key: str) -> str:
     lang = user_lang.get(user_id, 'ru')
-    text = TEXTS[lang].get(key, TEXTS['ru'][key])
-    if key == 'referral_body':
-        # подставляем ссылку с user_id
-        ref_link = REF_LINK_TEMPLATE.format(user_id=user_id)
-        # заменяем плейсхолдер в тексте (если есть)
-        # но у нас в шаблоне REF_LINK_TEMPLATE, поэтому подставим напрямую
-        # но text содержит плейсхолдер {REF_LINK_TEMPLATE}? Лучше динамически
-        # переделаем: используем format с переданным ref_link
-        return text.replace('{REF_LINK_TEMPLATE}', ref_link)
-    return text
+    return TEXTS[lang].get(key, TEXTS['ru'][key])
 
-def get_button_text(user_id: int, btn_key: str) -> str:
-    lang = user_lang.get(user_id, 'ru')
-    return TEXTS[lang]['main_buttons'].get(btn_key, TEXTS['ru']['main_buttons'][btn_key])
+def get_ref_link(user_id: int) -> str:
+    return REF_LINK_TEMPLATE.format(user_id=user_id)
 
-# ---------- Главное меню ----------
-async def show_main_menu(message: types.Message, user_id: int, edit: bool = False):
+# ---------- Отправка главного меню с баннером ----------
+async def send_main_menu(message: types.Message, user_id: int):
     text = get_text(user_id, 'welcome')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=get_button_text(user_id, 'balance'), icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE, callback_data="balance"),
-            InlineKeyboardButton(text=get_button_text(user_id, 'deals'), icon_custom_emoji_id=CUSTOM_EMOJI_DEALS, callback_data="deals")
+            InlineKeyboardButton(text=get_text(user_id, 'balance'), icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE, callback_data="balance"),
+            InlineKeyboardButton(text=get_text(user_id, 'deals'), icon_custom_emoji_id=CUSTOM_EMOJI_DEALS, callback_data="deals")
         ],
         [
-            InlineKeyboardButton(text=get_button_text(user_id, 'referrals'), icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS, callback_data="referrals"),
-            InlineKeyboardButton(text=get_button_text(user_id, 'lang'), icon_custom_emoji_id=CUSTOM_EMOJI_LANG, callback_data="lang")
+            InlineKeyboardButton(text=get_text(user_id, 'referrals_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS, callback_data="referrals"),
+            InlineKeyboardButton(text=get_text(user_id, 'lang_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_LANG, callback_data="lang")
         ],
         [
-            InlineKeyboardButton(text=get_button_text(user_id, 'requisites'), icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES, callback_data="requisites"),
-            InlineKeyboardButton(text=get_button_text(user_id, 'create'), icon_custom_emoji_id=CUSTOM_EMOJI_CREATE, callback_data="create")
+            InlineKeyboardButton(text=get_text(user_id, 'requisites'), icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES, callback_data="requisites"),
+            InlineKeyboardButton(text=get_text(user_id, 'create'), icon_custom_emoji_id=CUSTOM_EMOJI_CREATE, callback_data="create")
         ],
         [
-            InlineKeyboardButton(text=get_button_text(user_id, 'support'), icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")
+            InlineKeyboardButton(text=get_text(user_id, 'support'), icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")
         ]
     ])
-
-    if edit:
-        await message.edit_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-    else:
-        # Отправляем с баннером
-        try:
-            await message.answer_photo(photo=BANNER_URL, caption=text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception as e:
-            logging.error(f"Ошибка отправки баннера: {e}")
-            await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    try:
+        await message.answer_photo(photo=BANNER_URL, caption=text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка отправки баннера: {e}")
+        await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 # ---------- Команда /start ----------
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
     if user_id not in user_lang:
-        user_lang[user_id] = 'ru'  # по умолчанию русский
-    await show_main_menu(message, user_id)
+        user_lang[user_id] = 'ru'
+    await send_main_menu(message, user_id)
 
-# ---------- Обработчик выбора языка ----------
+# ---------- Выбор языка ----------
 @dp.callback_query(lambda c: c.data == "lang")
 async def cb_lang(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -200,31 +173,24 @@ async def cb_lang(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    # Редактируем текущее сообщение (если это возможно) или отправляем новое
-    try:
-        await callback.message.edit_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-    except:
-        # если не удалось отредактировать (например, это не фото), отправляем новое
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("lang_"))
 async def cb_lang_set(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    lang_code = callback.data.split("_")[1]  # 'ru' или 'en'
+    lang_code = callback.data.split("_")[1]
     user_lang[user_id] = lang_code
-    # Возвращаем главное меню с новым языком
-    # Редактируем текущее сообщение или отправляем новое
-    await show_main_menu(callback.message, user_id, edit=False)  # отправляем новое, так как фото может быть другое
+    await send_main_menu(callback.message, user_id)
     await callback.answer()
 
-# ---------- Реферальная страница ----------
+# ---------- Реферальная программа ----------
 @dp.callback_query(lambda c: c.data == "referrals")
 async def cb_referrals(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    title = get_text(user_id, 'referral_title')
-    body = get_text(user_id, 'referral_body', user_id=user_id)  # передаём user_id для ссылки
-    text = f"{title}\n\n{body}"
+    ref_text = get_text(user_id, 'referral')
+    ref_link = get_ref_link(user_id)
+    ref_text = ref_text.replace(REF_LINK_TEMPLATE, ref_link)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")
@@ -233,26 +199,22 @@ async def cb_referrals(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    # Отправляем новым сообщением (без баннера)
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await callback.message.answer(ref_text, parse_mode="HTML", reply_markup=keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "copy_ref")
 async def cb_copy_ref(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    ref_link = REF_LINK_TEMPLATE.format(user_id=user_id)
-    # Показываем ссылку в alert для копирования
-    await callback.answer(f"Ссылка скопирована:\n{ref_link}", show_alert=True)
-    # Также можно отправить сообщение с текстом, но пока просто алерт
+    ref_link = get_ref_link(user_id)
+    await callback.answer(f"{ref_link}", show_alert=True)
 
 @dp.callback_query(lambda c: c.data == "back_to_menu")
 async def cb_back_to_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    # Отправляем главное меню новым сообщением (с баннером)
-    await show_main_menu(callback.message, user_id, edit=False)
+    await send_main_menu(callback.message, user_id)
     await callback.answer()
 
-# ---------- Остальные обработчики ----------
+# ---------- Остальные кнопки ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     lang = user_lang.get(callback.from_user.id, 'ru')
