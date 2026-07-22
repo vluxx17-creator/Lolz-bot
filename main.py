@@ -59,7 +59,7 @@ CUSTOM_EMOJI_SEARCH    = "6084717714847306634"
 CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"
 CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"
 
-# ---------- Тексты (без динамических переменных в f-строках) ----------
+# ---------- Тексты (без угловых скобок в HTML-текстах) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
@@ -123,11 +123,11 @@ TEXTS = {
         'admin_panel': f"{EMOJI_SHIELD} Админ-панель\n\nДоступные команды:\n"
                        f"/hyteam — панель управления\n"
                        f"/vvteam — заявки на вывод\n"
-                       f"/chat <@user|id> <текст> — ответить пользователю\n"
-                       f"/hostlebuy <код> — отметить оплату сделки\n"
-                       f"/ref <код> — уведомить о проблеме с подарком\n"
-                       f"/boost_success <число> — увеличить счётчик успешных сделок\n"
-                       f"/giveadmin <@user|id> <время> — выдать админку (1m,1h,1d,1w,1M,1y)\n"
+                       f"/chat [@user или id] [текст] — ответить пользователю\n"
+                       f"/hostlebuy [код] — отметить оплату сделки\n"
+                       f"/ref [код] — уведомить о проблеме с подарком\n"
+                       f"/boost_success [число] — увеличить счётчик успешных сделок\n"
+                       f"/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
                        f"/logs — просмотр логов",
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
@@ -211,11 +211,11 @@ TEXTS = {
         'admin_panel': f"{EMOJI_SHIELD} Admin panel\n\nAvailable commands:\n"
                        f"/hyteam — control panel\n"
                        f"/vvteam — withdrawal requests\n"
-                       f"/chat <@user|id> <text> — reply to user\n"
-                       f"/hostlebuy <code> — mark deal as paid\n"
-                       f"/ref <code> — notify about gift issue\n"
-                       f"/boost_success <number> — increase successful deals count\n"
-                       f"/giveadmin <@user|id> <time> — grant admin (1m,1h,1d,1w,1M,1y)\n"
+                       f"/chat [@user or id] [text] — reply to user\n"
+                       f"/hostlebuy [code] — mark deal as paid\n"
+                       f"/ref [code] — notify about gift issue\n"
+                       f"/boost_success [number] — increase successful deals count\n"
+                       f"/giveadmin [@user or id] [time] — grant admin (1m,1h,1d,1w,1M,1y)\n"
                        f"/logs — view logs",
         'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
         'admin_withdraw_list': "Withdrawal requests:\n{list}",
@@ -295,11 +295,21 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
         user_last_message[user_id] = msg.message_id
     except Exception as e:
         logging.error(f"Ошибка отправки баннера: {e}")
-        if isinstance(target, types.Message):
-            msg = await target.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
-        else:
-            msg = await target.message.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
-        user_last_message[user_id] = msg.message_id
+        # Если ошибка из-за parse_mode, пробуем отправить без HTML
+        try:
+            if isinstance(target, types.Message):
+                msg = await target.answer(text, parse_mode=None, reply_markup=keyboard)
+            else:
+                msg = await target.message.answer(text, parse_mode=None, reply_markup=keyboard)
+            user_last_message[user_id] = msg.message_id
+        except Exception as e2:
+            logging.error(f"Ошибка отправки текста: {e2}")
+            # Последний шанс: отправить просто текст без разметки и без клавиатуры
+            if isinstance(target, types.Message):
+                msg = await target.answer("Произошла ошибка. Попробуйте позже.")
+            else:
+                msg = await target.message.answer("Произошла ошибка. Попробуйте позже.")
+            user_last_message[user_id] = msg.message_id
 
 # ---------- Отправка главного меню ----------
 async def send_main_menu(target, user_id: int):
@@ -615,7 +625,7 @@ async def admin_give_cb(callback: types.CallbackQuery):
     if not is_admin(user_id):
         await callback.answer("Нет доступа", show_alert=True)
         return
-    text = "Введите команду: /giveadmin <@user|id> <время>\nПример: /giveadmin @lesha 1d"
+    text = "Введите команду: /giveadmin [@user или id] [время]\nПример: /giveadmin @lesha 1d"
     await callback.message.answer(text)
     await callback.answer()
 
@@ -685,7 +695,7 @@ async def cmd_chat(message: types.Message):
         return
     args = message.text.split(maxsplit=2)
     if len(args) < 3:
-        await message.answer("Использование: /chat <@user|id> <текст>")
+        await message.answer("Использование: /chat [@user или id] [текст]")
         return
     target_str = args[1]
     text = args[2]
@@ -725,7 +735,7 @@ async def cmd_hostlebuy(message: types.Message):
         return
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("Использование: /hostlebuy <код сделки>")
+        await message.answer("Использование: /hostlebuy [код сделки]")
         return
     code = args[1]
     found = False
@@ -754,7 +764,7 @@ async def cmd_ref(message: types.Message):
         return
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("Использование: /ref <код сделки>")
+        await message.answer("Использование: /ref [код сделки]")
         return
     code = args[1]
     found = False
@@ -798,7 +808,7 @@ async def cmd_giveadmin(message: types.Message):
         return
     args = message.text.split()
     if len(args) < 3:
-        await message.answer("Использование: /giveadmin <@user|id> <1m|1h|1d|1w|1M|1y>")
+        await message.answer("Использование: /giveadmin [@user или id] [1m|1h|1d|1w|1M|1y]")
         return
     target_str = args[1]
     time_str = args[2]
@@ -816,7 +826,6 @@ async def cmd_giveadmin(message: types.Message):
     target_user_id = None
     if target_str.startswith('@'):
         # упрощённо – ищем по юзернейму в user_lang (заглушка)
-        # Для демо просто пропускаем, ожидаем id
         target_user_id = None
     else:
         try:
