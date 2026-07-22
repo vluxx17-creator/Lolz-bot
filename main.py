@@ -34,25 +34,26 @@ CUSTOM_EMOJI_DEALS     = "5417924076503062111"   # 💰
 CUSTOM_EMOJI_REFERRALS = "5357080225463149588"   # 🤝
 CUSTOM_EMOJI_LANG      = "5197269100878907942"   # ✍️
 CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
-CUSTOM_EMOJI_SITE      = "5258503720928288433"   # ℹ️
-CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌 (для кнопки "Создать сделку")
 
 BANNER_URL = "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg"
 
 # ---------- Команда /start ----------
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    # Текст без цифровых эмодзи — только премиум-эмодзи и HTML-теги
     text = (
         f"<b>{EMOJI_TROPHY} Добро пожаловать в Lolz Deals</b>\n\n"
         f"<b>{EMOJI_ROBOT} Ваш надёжный P2P-гарант:</b>\n"
-        f"1️⃣ <b>Автоматические сделки</b> с NFT и валютами\n"
-        f"2️⃣ {EMOJI_SHIELD} <b>Полная защита</b> обеих сторон\n"
-        f"3️⃣ {EMOJI_MONEY} <b>Реферальная программа</b> — <i>50% от комиссии</i>\n"
-        f"4️⃣ {EMOJI_PACKAGE} <b>Передача товаров</b> через менеджера: @LZSupp\n\n"
+        f"— <b>Автоматические сделки</b> с NFT и валютами\n"
+        f"— {EMOJI_SHIELD} <b>Полная защита</b> обеих сторон\n"
+        f"— {EMOJI_MONEY} <b>Реферальная программа</b> — <i>50% от комиссии</i>\n"
+        f"— {EMOJI_PACKAGE} <b>Передача товаров</b> через менеджера: @LZSupp\n\n"
         f"{EMOJI_MEGAPHONE} <b>Канал:</b> @LiveLolz\n\n"
         f"<blockquote><b>Мои реквизиты:</b> {EMOJI_LIGHTNING} <b>Создать сделку</b></blockquote>"
     )
 
+    # ---------- Симметричная клавиатура без кнопки "Сайт" ----------
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -78,21 +79,25 @@ async def cmd_start(message: types.Message):
                 callback_data="lang"
             )
         ],
+        # Отдельный ряд для кнопки "Создать сделку" (на всю ширину)
+        [
+            InlineKeyboardButton(
+                text="Создать сделку",
+                icon_custom_emoji_id=CUSTOM_EMOJI_CREATE,
+                callback_data="create"
+            )
+        ],
+        # Отдельный расширенный ряд для "Техподдержка" (на всю ширину)
         [
             InlineKeyboardButton(
                 text="Техподдержка",
                 icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT,
                 callback_data="support"
-            ),
-            InlineKeyboardButton(
-                text="Сайт",
-                icon_custom_emoji_id=CUSTOM_EMOJI_SITE,
-                url="https://lolz.live"
             )
         ]
     ])
 
-    # Скачиваем и отправляем фото через InputFile (работает с bytes)
+    # Отправка баннера
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(BANNER_URL) as resp:
@@ -112,6 +117,7 @@ async def cmd_start(message: types.Message):
         await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
+# ---------- Обработчики нажатий ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     await callback.answer("💰 Ваш баланс: 0.00 ₽", show_alert=True)
@@ -128,12 +134,16 @@ async def cb_referrals(callback: types.CallbackQuery):
 async def cb_lang(callback: types.CallbackQuery):
     await callback.answer("🌐 Выберите язык: /lang_ru или /lang_en", show_alert=True)
 
+@dp.callback_query(lambda c: c.data == "create")
+async def cb_create(callback: types.CallbackQuery):
+    await callback.answer("✍️ Создание новой сделки (заглушка)", show_alert=True)
+
 @dp.callback_query(lambda c: c.data == "support")
 async def cb_support(callback: types.CallbackQuery):
     await callback.answer("🛠 Связь с поддержкой: @LZSupportBot", show_alert=True)
 
 
-# ---------- HTTP-сервер для поддержания порта ----------
+# ---------- HTTP-сервер для Render (чтобы не падал) ----------
 async def health_check(request):
     return web.Response(text="OK", status=200)
 
@@ -147,11 +157,8 @@ async def start_web_server():
     await site.start()
     logging.info(f"Web server started on port {port}")
 
-# ---------- Запуск ----------
 async def main():
-    # Запускаем веб-сервер в фоне
     asyncio.create_task(start_web_server())
-    # Запускаем поллинг
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
