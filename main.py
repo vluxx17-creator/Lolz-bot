@@ -15,6 +15,9 @@ TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN не задан в .env")
 
+# ---------- URL баннера из переменной окружения (с fallback) ----------
+BANNER_URL = os.getenv("BANNER_URL", "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg")
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 logging.basicConfig(level=logging.INFO)
@@ -35,8 +38,6 @@ CUSTOM_EMOJI_LANG      = "5197269100878907942"
 CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
 CUSTOM_EMOJI_CREATE    = "6084717714847306634"
 CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"
-
-BANNER_URL = "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg"
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -70,9 +71,7 @@ async def cmd_start(message: types.Message):
 
     # ---------- Отправка баннера с правильными заголовками ----------
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(BANNER_URL, timeout=10) as resp:
                 if resp.status == 200:
