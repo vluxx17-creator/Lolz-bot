@@ -83,21 +83,20 @@ class RequisitesEdit(StatesGroup):
     waiting_usdt = State()
     waiting_btc = State()
 
+# ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
         'ton': '—',
         'card': '—',
         'stars': '—',
         'usdt': '—',
-        'btc': '—',
-        'updated_at': None
+        'btc': '—'
     })
 
 def save_user_requisites(user_id: int, data: dict):
     if user_id not in user_requisites:
         user_requisites[user_id] = {}
     user_requisites[user_id].update(data)
-    user_requisites[user_id]['updated_at'] = datetime.now().strftime("%H:%M")
 
 # ---------- Валидация ----------
 def validate_ton(value: str) -> bool:
@@ -215,7 +214,6 @@ TEXTS = {
         'logs_entry': "{time} | {user} | {action} | {data}",
         'temporarily_unavailable': f"{EMOJI_PACKAGE} Функция временно недоступна. Скоро появится!",
         'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
-        # ---------- Реквизиты ----------
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON-кошелёк:</b>\n"
@@ -227,8 +225,7 @@ TEXTS = {
             f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
             f"<code>{{usdt}}</code>\n\n"
             f"{EMOJI_COIN} <b>BTC:</b>\n"
-            f"<code>{{btc}}</code></blockquote>\n\n"
-            f"<i>изменено {{time}}</i>"
+            f"<code>{{btc}}</code></blockquote>"
         ),
         'requisites_buttons': {
             'ton': f"{EMOJI_DIAMOND} TON-кошелёк",
@@ -337,7 +334,6 @@ TEXTS = {
         'logs_entry': "{time} | {user} | {action} | {data}",
         'temporarily_unavailable': f"{EMOJI_PACKAGE} Feature temporarily unavailable. Coming soon!",
         'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
-        # ---------- Requisites ----------
         'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
@@ -349,8 +345,7 @@ TEXTS = {
             f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
             f"<code>{{usdt}}</code>\n\n"
             f"{EMOJI_COIN} <b>BTC:</b>\n"
-            f"<code>{{btc}}</code></blockquote>\n\n"
-            f"<i>changed {{time}}</i>"
+            f"<code>{{btc}}</code></blockquote>"
         ),
         'requisites_buttons': {
             'ton': f"{EMOJI_DIAMOND} TON wallet",
@@ -569,7 +564,7 @@ async def cb_create(callback: types.CallbackQuery):
     log_action(user_id, "create_deal", "создание сделки (заглушка)")
 
 # ============================================================
-# МОИ РЕКВИЗИТЫ
+# МОИ РЕКВИЗИТЫ (с симметричными инлайн-кнопками)
 # ============================================================
 
 async def show_requisites(target, user_id: int):
@@ -579,23 +574,21 @@ async def show_requisites(target, user_id: int):
     stars = req['stars']
     usdt = req['usdt']
     btc = req['btc']
-    updated = req['updated_at'] if req['updated_at'] else 'никогда'
     
     title = get_text(user_id, 'requisites_title')
     body = get_text(user_id, 'requisites_body').format(
-        ton=ton, card=card, stars=stars, usdt=usdt, btc=btc, time=updated
+        ton=ton, card=card, stars=stars, usdt=usdt, btc=btc
     )
     text = f"{title}\n\n{body}"
     
+    # Симметричное расположение кнопок: 2 в ряд, последняя отдельно (центрирована)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
                 text=get_text(user_id, 'requisites_buttons')['ton'],
                 icon_custom_emoji_id=CUSTOM_EMOJI_TON,
                 callback_data="edit_ton"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 text=get_text(user_id, 'requisites_buttons')['card'],
                 icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN,
@@ -607,9 +600,7 @@ async def show_requisites(target, user_id: int):
                 text=get_text(user_id, 'requisites_buttons')['stars'],
                 icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN,
                 callback_data="edit_stars"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 text=get_text(user_id, 'requisites_buttons')['usdt'],
                 icon_custom_emoji_id=CUSTOM_EMOJI_USDT,
@@ -639,7 +630,7 @@ async def cb_requisites(callback: types.CallbackQuery):
     await show_requisites(callback, user_id)
     await callback.answer()
 
-# ---------- Редактирование полей ----------
+# ---------- Редактирование полей (FSM) ----------
 @dp.callback_query(lambda c: c.data == "edit_ton")
 async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -675,7 +666,7 @@ async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
     await callback.answer()
 
-# ---------- Обработчики ввода ----------
+# ---------- Обработчики ввода для каждого состояния ----------
 @dp.message(RequisitesEdit.waiting_ton)
 async def process_ton(message: Message, state: FSMContext):
     user_id = message.from_user.id
