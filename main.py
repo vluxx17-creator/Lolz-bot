@@ -29,19 +29,18 @@ EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 
 # ---------- ID премиум-эмодзи для кнопок ----------
-CUSTOM_EMOJI_BALANCE   = "6041730074376410123"   # 📥
-CUSTOM_EMOJI_DEALS     = "5417924076503062111"   # 💰
-CUSTOM_EMOJI_REFERRALS = "5357080225463149588"   # 🤝
-CUSTOM_EMOJI_LANG      = "5197269100878907942"   # ✍️
-CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
-CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌 (для кнопки "Создать сделку")
+CUSTOM_EMOJI_BALANCE   = "6041730074376410123"
+CUSTOM_EMOJI_DEALS     = "5417924076503062111"
+CUSTOM_EMOJI_REFERRALS = "5357080225463149588"
+CUSTOM_EMOJI_LANG      = "5197269100878907942"
+CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"
+CUSTOM_EMOJI_CREATE    = "6084717714847306634"
 
 BANNER_URL = "https://i.ibb.co/KcVyKTVc/IMG-1682.jpg"
 
 # ---------- Команда /start ----------
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Текст без цифровых эмодзи — только премиум-эмодзи и HTML-теги
     text = (
         f"<b>{EMOJI_TROPHY} Добро пожаловать в Lolz Deals</b>\n\n"
         f"<b>{EMOJI_ROBOT} Ваш надёжный P2P-гарант:</b>\n"
@@ -53,7 +52,6 @@ async def cmd_start(message: types.Message):
         f"<blockquote><b>Мои реквизиты:</b> {EMOJI_LIGHTNING} <b>Создать сделку</b></blockquote>"
     )
 
-    # ---------- Симметричная клавиатура без кнопки "Сайт" ----------
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -79,7 +77,6 @@ async def cmd_start(message: types.Message):
                 callback_data="lang"
             )
         ],
-        # Отдельный ряд для кнопки "Создать сделку" (на всю ширину)
         [
             InlineKeyboardButton(
                 text="Создать сделку",
@@ -87,7 +84,6 @@ async def cmd_start(message: types.Message):
                 callback_data="create"
             )
         ],
-        # Отдельный расширенный ряд для "Техподдержка" (на всю ширину)
         [
             InlineKeyboardButton(
                 text="Техподдержка",
@@ -97,7 +93,6 @@ async def cmd_start(message: types.Message):
         ]
     ])
 
-    # Отправка баннера
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(BANNER_URL) as resp:
@@ -117,7 +112,7 @@ async def cmd_start(message: types.Message):
         await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-# ---------- Обработчики нажатий ----------
+# ---------- Обработчики колбэков ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     await callback.answer("💰 Ваш баланс: 0.00 ₽", show_alert=True)
@@ -143,7 +138,7 @@ async def cb_support(callback: types.CallbackQuery):
     await callback.answer("🛠 Связь с поддержкой: @LZSupportBot", show_alert=True)
 
 
-# ---------- HTTP-сервер для Render (чтобы не падал) ----------
+# ---------- HTTP-сервер для Render (гарантированно запускается) ----------
 async def health_check(request):
     return web.Response(text="OK", status=200)
 
@@ -155,10 +150,16 @@ async def start_web_server():
     await runner.setup()
     site = web.TCPSite(runner, host="0.0.0.0", port=port)
     await site.start()
-    logging.info(f"Web server started on port {port}")
+    logging.info(f"✅ Web server started on port {port}")
+    # Держим сервер активным бесконечно
+    await asyncio.Event().wait()
 
 async def main():
+    # Запускаем веб-сервер в фоновой задаче
     asyncio.create_task(start_web_server())
+    # Даём серверу время стартовать
+    await asyncio.sleep(0.5)
+    # Запускаем поллинг
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
