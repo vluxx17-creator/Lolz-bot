@@ -35,6 +35,7 @@ withdraw_requests = []
 user_last_message = {}
 temp_admins = {}
 logs = []
+user_requisites = {}
 
 # ============================================================
 # ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА
@@ -47,8 +48,6 @@ EMOJI_MONEY     = '<tg-emoji emoji-id="5794280000383358988">💰</tg-emoji>'
 EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
-
-# Новые для реквизитов
 EMOJI_PIN       = '<tg-emoji emoji-id="5253961389285845297">📌</tg-emoji>'
 EMOJI_DIAMOND   = '<tg-emoji emoji-id="5377620962390857342">💎</tg-emoji>'
 EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
@@ -70,13 +69,11 @@ CUSTOM_EMOJI_BACK       = "5197269100878907942"
 CUSTOM_EMOJI_SEARCH     = "6084717714847306634"
 CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"
 CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"
-
-# Новые для кнопок реквизитов
-CUSTOM_EMOJI_TON   = "5301166339749070453"
-CUSTOM_EMOJI_CARD_BTN = "5197434882321567830"
-CUSTOM_EMOJI_STARS_BTN = "5897792062291449826"
-CUSTOM_EMOJI_USDT  = "5474537505015486009"
-CUSTOM_EMOJI_BTC   = "5348296214183950233"
+CUSTOM_EMOJI_TON        = "5301166339749070453"
+CUSTOM_EMOJI_CARD_BTN   = "5197434882321567830"
+CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
+CUSTOM_EMOJI_USDT       = "5474537505015486009"
+CUSTOM_EMOJI_BTC        = "5348296214183950233"
 
 # ---------- FSM для редактирования реквизитов ----------
 class RequisitesEdit(StatesGroup):
@@ -85,9 +82,6 @@ class RequisitesEdit(StatesGroup):
     waiting_stars = State()
     waiting_usdt = State()
     waiting_btc = State()
-
-# ---------- Хранилище реквизитов пользователей ----------
-user_requisites = {}  # user_id: dict с полями ton, card, stars, usdt, btc, updated_at
 
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
@@ -107,23 +101,18 @@ def save_user_requisites(user_id: int, data: dict):
 
 # ---------- Валидация ----------
 def validate_ton(value: str) -> bool:
-    # упрощённо: не пусто и длина > 10
     return len(value.strip()) > 5
 
 def validate_card(value: str) -> bool:
-    # 16 цифр
     return bool(re.fullmatch(r'\d{16}', value.strip()))
 
 def validate_stars(value: str) -> bool:
-    # начинается с @, содержит буквы, цифры, подчёркивание
     return bool(re.fullmatch(r'@[\w_]+', value.strip()))
 
 def validate_usdt(value: str) -> bool:
-    # TRC20 адрес: длина 34, начинается с T
     return bool(re.fullmatch(r'T[1-9A-HJ-NP-Za-km-z]{33}', value.strip()))
 
 def validate_btc(value: str) -> bool:
-    # упрощённо: длина > 25
     return len(value.strip()) > 25
 
 # ---------- Тексты ----------
@@ -230,16 +219,16 @@ TEXTS = {
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON-кошелёк:</b>\n"
-            f"<code>{ton}</code>\n\n"
+            f"<code>{{ton}}</code>\n\n"
             f"{EMOJI_CARD} <b>Карта:</b>\n"
-            f"<code>{card}</code>\n\n"
+            f"<code>{{card}}</code>\n\n"
             f"{EMOJI_STAR} <b>Stars:</b>\n"
-            f"<code>{stars}</code>\n\n"
+            f"<code>{{stars}}</code>\n\n"
             f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
-            f"<code>{usdt}</code>\n\n"
+            f"<code>{{usdt}}</code>\n\n"
             f"{EMOJI_COIN} <b>BTC:</b>\n"
-            f"<code>{btc}</code></blockquote>\n\n"
-            f"<i>изменено {time}</i>"
+            f"<code>{{btc}}</code></blockquote>\n\n"
+            f"<i>изменено {{time}}</i>"
         ),
         'requisites_buttons': {
             'ton': f"{EMOJI_DIAMOND} TON-кошелёк",
@@ -352,16 +341,16 @@ TEXTS = {
         'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
-            f"<code>{ton}</code>\n\n"
+            f"<code>{{ton}}</code>\n\n"
             f"{EMOJI_CARD} <b>Card:</b>\n"
-            f"<code>{card}</code>\n\n"
+            f"<code>{{card}}</code>\n\n"
             f"{EMOJI_STAR} <b>Stars:</b>\n"
-            f"<code>{stars}</code>\n\n"
+            f"<code>{{stars}}</code>\n\n"
             f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
-            f"<code>{usdt}</code>\n\n"
+            f"<code>{{usdt}}</code>\n\n"
             f"{EMOJI_COIN} <b>BTC:</b>\n"
-            f"<code>{btc}</code></blockquote>\n\n"
-            f"<i>changed {time}</i>"
+            f"<code>{{btc}}</code></blockquote>\n\n"
+            f"<i>changed {{time}}</i>"
         ),
         'requisites_buttons': {
             'ton': f"{EMOJI_DIAMOND} TON wallet",
@@ -567,7 +556,7 @@ async def cb_back_to_menu(callback: types.CallbackQuery):
     await send_main_menu(callback, user_id)
     await callback.answer()
 
-# ---------- Остальные кнопки (заглушки) ----------
+# ---------- Кнопка "Создать сделку" (заглушка) ----------
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -583,7 +572,6 @@ async def cb_create(callback: types.CallbackQuery):
 # МОИ РЕКВИЗИТЫ
 # ============================================================
 
-# ---------- Отображение реквизитов ----------
 async def show_requisites(target, user_id: int):
     req = get_user_requisites(user_id)
     ton = req['ton']
@@ -599,7 +587,6 @@ async def show_requisites(target, user_id: int):
     )
     text = f"{title}\n\n{body}"
     
-    # Клавиатура с кнопками для каждого поля
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -652,9 +639,7 @@ async def cb_requisites(callback: types.CallbackQuery):
     await show_requisites(callback, user_id)
     await callback.answer()
 
-# ---------- Редактирование полей (FSM) ----------
-# Для каждого поля создаём отдельный обработчик callback, который запускает состояние
-
+# ---------- Редактирование полей ----------
 @dp.callback_query(lambda c: c.data == "edit_ton")
 async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -690,7 +675,7 @@ async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
     await callback.answer()
 
-# ---------- Обработчики ввода для каждого состояния ----------
+# ---------- Обработчики ввода ----------
 @dp.message(RequisitesEdit.waiting_ton)
 async def process_ton(message: Message, state: FSMContext):
     user_id = message.from_user.id
