@@ -38,7 +38,7 @@ logs = []
 user_requisites = {}
 
 # ============================================================
-# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (используются только в тексте)
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА
 # ============================================================
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
@@ -71,11 +71,11 @@ CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"
 CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"
 
 # ----- Исправленные ID для реквизитов -----
-CUSTOM_EMOJI_TON        = "5377620962390857342"   # 💎 (TON)
-CUSTOM_EMOJI_CARD_BTN   = "5445353829304387411"   # 💳 (Карта)
-CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"   # ⭐️ (Stars)
-CUSTOM_EMOJI_USDT       = "5794280000383358988"   # 💰 (USDT)
-CUSTOM_EMOJI_BTC        = "5379773896352355687"   # 🪙 (BTC)
+CUSTOM_EMOJI_TON        = "5377620962390857342"   # 💎
+CUSTOM_EMOJI_CARD_BTN   = "5445353829304387411"   # 💳
+CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"   # ⭐️
+CUSTOM_EMOJI_USDT       = "5794280000383358988"   # 💰
+CUSTOM_EMOJI_BTC        = "5379773896352355687"   # 🪙
 
 # ---------- FSM для редактирования реквизитов ----------
 class RequisitesEdit(StatesGroup):
@@ -242,7 +242,7 @@ TEXTS = {
         },
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
-        'requisites_edit_success': "Данные обновлены!",
+        'requisites_edit_success': "✅ Данные обновлены!",
     },
     'en': {
         'welcome': (
@@ -361,7 +361,7 @@ TEXTS = {
         },
         'requisites_edit_prompt': "Enter new {field}:",
         'requisites_edit_invalid': "Invalid format. Try again.",
-        'requisites_edit_success': "Data updated!",
+        'requisites_edit_success': "✅ Data updated!",
     }
 }
 
@@ -676,7 +676,7 @@ async def process_search_code(message: Message, state: FSMContext):
     await state.clear()
 
 # ============================================================
-# РАЗДЕЛ МОИ РЕКВИЗИТЫ (с исправленными ID эмодзи)
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ (с исправленными ID эмодзи и сообщением об успехе)
 # ============================================================
 
 async def show_requisites(target, user_id: int):
@@ -777,7 +777,7 @@ async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
     await callback.answer()
 
-# ---------- Обработчики ввода для каждого состояния ----------
+# ---------- Обработчики ввода для каждого состояния (с отправкой сообщения об успехе) ----------
 @dp.message(RequisitesEdit.waiting_ton)
 async def process_ton(message: Message, state: FSMContext):
     user_id = message.from_user.id
@@ -787,6 +787,7 @@ async def process_ton(message: Message, state: FSMContext):
         return
     save_user_requisites(user_id, {'ton': value})
     await state.clear()
+    await message.answer(get_text(user_id, 'requisites_edit_success'))
     await show_requisites(message, user_id)
     log_action(user_id, "edit_requisites", f"ton обновлён")
 
@@ -799,6 +800,7 @@ async def process_card(message: Message, state: FSMContext):
         return
     save_user_requisites(user_id, {'card': value})
     await state.clear()
+    await message.answer(get_text(user_id, 'requisites_edit_success'))
     await show_requisites(message, user_id)
     log_action(user_id, "edit_requisites", f"card обновлён")
 
@@ -811,6 +813,7 @@ async def process_stars(message: Message, state: FSMContext):
         return
     save_user_requisites(user_id, {'stars': value})
     await state.clear()
+    await message.answer(get_text(user_id, 'requisites_edit_success'))
     await show_requisites(message, user_id)
     log_action(user_id, "edit_requisites", f"stars обновлён")
 
@@ -823,6 +826,7 @@ async def process_usdt(message: Message, state: FSMContext):
         return
     save_user_requisites(user_id, {'usdt': value})
     await state.clear()
+    await message.answer(get_text(user_id, 'requisites_edit_success'))
     await show_requisites(message, user_id)
     log_action(user_id, "edit_requisites", f"usdt обновлён")
 
@@ -835,6 +839,7 @@ async def process_btc(message: Message, state: FSMContext):
         return
     save_user_requisites(user_id, {'btc': value})
     await state.clear()
+    await message.answer(get_text(user_id, 'requisites_edit_success'))
     await show_requisites(message, user_id)
     log_action(user_id, "edit_requisites", f"btc обновлён")
 
@@ -1216,7 +1221,7 @@ async def cmd_logs(message: types.Message):
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "logs", "просмотр логов")
 
-# ---------- HTTP-сервер для Render ----------
+# ---------- HTTP-сервер ----------
 async def health_check(request):
     return web.Response(text="OK")
 
