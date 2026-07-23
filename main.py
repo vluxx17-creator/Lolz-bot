@@ -5,7 +5,7 @@ import time
 import re
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -37,18 +37,49 @@ temp_admins = {}
 logs = []
 user_requisites = {}
 
+# ============================================================
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (эти ID точно работают)
+# ============================================================
+EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
+EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
+EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
+EMOJI_SHIELD    = '<tg-emoji emoji-id="5794085322400733645">🛡</tg-emoji>'
+EMOJI_MONEY     = '<tg-emoji emoji-id="5794280000383358988">💰</tg-emoji>'
+EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
+EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
+EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
+EMOJI_PIN       = '<tg-emoji emoji-id="5253961389285845297">📌</tg-emoji>'
+EMOJI_DIAMOND   = '<tg-emoji emoji-id="5377620962390857342">💎</tg-emoji>'
+EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
+EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
+EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
+
+# ============================================================
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ КНОПОК (используем те же, что в тексте)
+# ============================================================
+# Для каждой кнопки берём ID из соответствующей текстовой переменной
+CUSTOM_EMOJI_BALANCE    = "5794280000383358988"  # 💰
+CUSTOM_EMOJI_DEALS      = "5794241397217304511"  # 📦
+CUSTOM_EMOJI_REFERRALS  = "5794280000383358988"  # 💰 (можно другой, но пока так)
+CUSTOM_EMOJI_LANG       = "5893255507380014983"  # 📖 (или 🏆)
+CUSTOM_EMOJI_REQUISITES = "5253961389285845297"  # 📌
+CUSTOM_EMOJI_CREATE     = "5794241397217304511"  # 📦
+CUSTOM_EMOJI_SUPPORT    = "5794085322400733645"  # 🛡
+CUSTOM_EMOJI_COPY       = "5253961389285845297"  # 📌
+CUSTOM_EMOJI_BACK       = "5253961389285845297"  # 📌 (для назад)
+CUSTOM_EMOJI_SEARCH     = "5253961389285845297"  # 📌 (для поиска)
+CUSTOM_EMOJI_WITHDRAW   = "5456140674028019486"  # ⚡
+CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"  # 📦
+CUSTOM_EMOJI_TON        = "5301166339749070453"  # (из задания, оставляем как есть)
+CUSTOM_EMOJI_CARD_BTN   = "5197434882321567830"
+CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
+CUSTOM_EMOJI_USDT       = "5474537505015486009"
+CUSTOM_EMOJI_BTC        = "5348296214183950233"
+
 # ---------- FSM для вывода ----------
 class WithdrawForm(StatesGroup):
     waiting_requisites = State()
     waiting_amount = State()
-
-# ---------- FSM для редактирования реквизитов (ДОБАВЛЕНО) ----------
-class RequisitesEdit(StatesGroup):
-    waiting_ton = State()
-    waiting_card = State()
-    waiting_stars = State()
-    waiting_usdt = State()
-    waiting_btc = State()
 
 # ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
@@ -60,54 +91,33 @@ def get_user_requisites(user_id: int):
         'btc': '—'
     })
 
-def save_user_requisites(user_id: int, data: dict):
-    if user_id not in user_requisites:
-        user_requisites[user_id] = {}
-    user_requisites[user_id].update(data)
-
-# ---------- Валидация ----------
-def validate_ton(value: str) -> bool:
-    return len(value.strip()) > 5
-
-def validate_card(value: str) -> bool:
-    return bool(re.fullmatch(r'\d{16}', value.strip()))
-
-def validate_stars(value: str) -> bool:
-    return bool(re.fullmatch(r'@[\w_]+', value.strip()))
-
-def validate_usdt(value: str) -> bool:
-    return bool(re.fullmatch(r'T[1-9A-HJ-NP-Za-km-z]{33}', value.strip()))
-
-def validate_btc(value: str) -> bool:
-    return len(value.strip()) > 25
-
-# ---------- Тексты (без премиум-эмодзи) ----------
+# ---------- Тексты (с HTML-тегами и премиум-эмодзи) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
     'ru': {
         'welcome': (
-            "Добро пожаловать в Lolz Deals\n\n"
-            "Ваш надёжный P2P-гарант:\n"
-            "— Автоматические сделки с NFT и валютами\n"
-            "— Полная защита обеих сторон\n"
-            "— Реферальная программа — 50% от комиссии\n"
-            "— Передача товаров через менеджера: @LZSupp\n\n"
-            "Канал: @LiveLolz"
+            f"<b>{EMOJI_TROPHY} Добро пожаловать в Lolz Deals</b>\n\n"
+            f"<blockquote><b>{EMOJI_ROBOT} Ваш надёжный P2P-гарант:</b>\n"
+            f"— <b>Автоматические сделки</b> с NFT и валютами\n"
+            f"— {EMOJI_SHIELD} <b>Полная защита</b> обеих сторон\n"
+            f"— {EMOJI_MONEY} <b>Реферальная программа</b> — <i>50% от комиссии</i>\n"
+            f"— {EMOJI_PACKAGE} <b>Передача товаров</b> через менеджера: @LZSupp</blockquote>\n\n"
+            f"{EMOJI_MEGAPHONE} <b>Канал:</b> @LiveLolz"
         ),
-        'lang_prompt': "Выберите язык:",
+        'lang_prompt': f"<b>{EMOJI_GLOSSARY} Выберите язык:</b>",
         'lang_ru': "Русский",
         'lang_en': "English",
         'referral': (
-            "Реферальная программа\n\n"
-            "Ваша ссылка:\n"
+            f"<b>{EMOJI_MONEY} Реферальная программа</b>\n\n"
+            f"<blockquote><b>Ваша ссылка:</b>\n"
             f"<code>{REF_LINK_TEMPLATE}</code>\n"
-            "Рефералов: 0\n"
-            "Заработано: 0.0 TON\n\n"
-            "Бонус: 50% от комиссии с каждой сделки реферала!"
+            f"<b>Рефералов:</b> 0\n"
+            f"<b>Заработано:</b> 0.0 TON</blockquote>\n\n"
+            f"<b>Бонус:</b> 50% от комиссии с каждой сделки реферала!"
         ),
         'copy_btn': "Скопировать реф. ссылку",
-        'back_btn': "📋 Назад в меню",
+        'back_btn': "Назад в меню",
         'balance': "Баланс",
         'deals': "Мои сделки",
         'referrals_btn': "Рефералы",
@@ -116,114 +126,107 @@ TEXTS = {
         'create': "Создать сделку",
         'support': "Техподдержка",
         'deals_title': "Мои сделки",
-        'deals_stats': "Всего: {total} Завершено: {completed}",
+        'deals_stats': f"Всего: {{total}} {EMOJI_TROPHY} Завершено: {{completed}} {EMOJI_PACKAGE}",
         'deals_list_empty': "У вас пока нет сделок.",
         'search_btn': "Поиск по коду",
         'search_prompt': "Введите код сделки (например, Yi4qbQ98):",
         'deal_not_found': "Сделка с кодом {code} не найдена.",
         'deal_details': (
-            "Детали сделки #{code}\n\n"
+            "<b>Детали сделки #{code}</b>\n\n"
             "Покупатель: @{buyer}\n"
             "Продавец: @{seller}\n"
             "Сумма: {amount} {currency}\n"
             "Время: {time}\n"
             "Дата: {date}"
         ),
-        # ---------- Баланс (как на скриншоте) ----------
-        'balance_title': "Ваш баланс:",
-        'balance_empty': "❤️ Ваш баланс пока пуст",
-        'balance_amount': "❤️ Ваш баланс: {amount} TON",
+        'balance_title': f"{EMOJI_MONEY} <b>Ваш баланс:</b>",
+        'balance_empty': "Ваш баланс пока пуст",
+        'balance_amount': "Ваш баланс: {amount} TON",
         'completed_deals': "Завершённых сделок: {completed}",
-        'withdraw_need': "❗ Для вывода средств необходимо минимум 2 завершённых сделки",
-        'withdraw_btn': "💎 Вывод средств",
-        'transactions_btn': "🌐 Транзакции",
+        'withdraw_need': "Для вывода средств необходимо минимум 2 завершённых сделки",
+        'withdraw_btn': f"{EMOJI_LIGHTNING} Вывод средств",
+        'transactions_btn': f"{EMOJI_PACKAGE} Транзакции",
         'transactions_empty': "История транзакций пуста.",
         'withdraw_form_requisites': "Введите ваши реквизиты для вывода (кошелёк, карта и т.п.):",
         'withdraw_form_amount': "Введите сумму для вывода (доступно {amount} TON):",
         'withdraw_too_much': "Сумма превышает доступный баланс.",
-        'withdraw_success': "✅ Заявка на вывод {amount} TON отправлена! Ожидайте подтверждения администратора.",
+        'withdraw_success': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON отправлена! Ожидайте подтверждения администратора.",
         'withdraw_fail': "Ошибка при создании заявки. Попробуйте позже.",
-        # ---------- Админ ----------
         'admin_panel': (
-            "Админ-панель\n\n"
-            "Доступные команды:\n"
-            "/hyteam — показать эту панель\n"
-            "/vvteam — заявки на вывод\n"
-            "/chat [@user или id] [текст] — ответить пользователю\n"
-            "/hostlebuy [код] — отметить оплату сделки\n"
-            "/ref [код] — уведомить о проблеме с подарком\n"
-            "/boost_success [число] — увеличить счётчик успешных сделок\n"
-            "/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
-            "/addbalance [id] [сумма] — начислить баланс\n"
-            "/logs — просмотр логов"
+            f"{EMOJI_SHIELD} <b>Админ-панель</b>\n\n"
+            f"{EMOJI_ROBOT} <b>Доступные команды:</b>\n"
+            f"/hyteam — показать эту панель\n"
+            f"/vvteam — заявки на вывод\n"
+            f"/chat [@user или id] [текст] — ответить пользователю\n"
+            f"/hostlebuy [код] — отметить оплату сделки\n"
+            f"/ref [код] — уведомить о проблеме с подарком\n"
+            f"/boost_success [число] — увеличить счётчик успешных сделок\n"
+            f"/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
+            f"/addbalance [id] [сумма] — начислить баланс\n"
+            f"/logs — просмотр логов"
         ),
-        'admin_no_access': "У вас нет доступа к этой команде.",
+        'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
         'admin_withdraw_empty': "Нет активных заявок на вывод.",
-        'admin_withdraw_confirm': "Заявка на вывод {amount} TON для пользователя {user} подтверждена!",
+        'admin_withdraw_confirm': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON для пользователя {{user}} подтверждена!",
         'admin_withdraw_error': "Ошибка подтверждения.",
         'chat_success': "Сообщение отправлено пользователю.",
         'chat_fail': "Не удалось отправить сообщение.",
         'chat_no_deal': "У вас нет сделок с этим пользователем.",
         'chat_not_first': "Пользователь не писал в поддержку.",
         'chat_limit': "Превышен лимит сообщений для этой сделки (макс. 10).",
-        'hostlebuy_success': "Сделка {code} отмечена как оплаченная, уведомления отправлены.",
+        'hostlebuy_success': f"{EMOJI_MONEY} Сделка {{code}} отмечена как оплаченная, уведомления отправлены.",
         'hostlebuy_fail': "Сделка не найдена или уже оплачена.",
-        'ref_success': "Уведомление о проблеме с подарком отправлено участникам сделки {code}.",
+        'ref_success': f"{EMOJI_MEGAPHONE} Уведомление о проблеме с подарком отправлено участникам сделки {{code}}.",
         'ref_fail': "Сделка не найдена или неактивна.",
-        'boost_success': "Счётчик успешных сделок увеличен на {num}.",
+        'boost_success': f"{EMOJI_TROPHY} Счётчик успешных сделок увеличен на {{num}}.",
         'boost_fail': "Введите число.",
-        'giveadmin_success': "Пользователь {user} получил права администратора на {time_str}.",
+        'giveadmin_success': f"{EMOJI_SHIELD} Пользователь {{user}} получил права администратора на {{time_str}}.",
         'giveadmin_fail': "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
-        'addbalance_success': "Пользователю {user} начислено {amount} TON. Новый баланс: {new_balance} TON.",
+        'addbalance_success': f"{EMOJI_MONEY} Пользователю {{user}} начислено {{amount}} TON. Новый баланс: {{new_balance}} TON.",
         'addbalance_fail': "Неверный формат. Используйте: /addbalance [id] [сумма]",
         'addbalance_user_not_found': "Пользователь с ID {user} не найден.",
-        'logs_header': "Логи действий:\n\n",
+        'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'support_contact': "Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
-        'requisites_title': "Мои реквизиты",
+        'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
+        'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
-            "TON-кошелёк:\n{ton}\n\n"
-            "Карта:\n{card}\n\n"
-            "Stars:\n{stars}\n\n"
-            "USDT (TRC20):\n{usdt}\n\n"
-            "BTC:\n{btc}"
+            f"<blockquote>{EMOJI_DIAMOND} <b>TON-кошелёк:</b>\n"
+            f"<code>{{ton}}</code>\n\n"
+            f"{EMOJI_CARD} <b>Карта:</b>\n"
+            f"<code>{{card}}</code>\n\n"
+            f"{EMOJI_STAR} <b>Stars:</b>\n"
+            f"<code>{{stars}}</code>\n\n"
+            f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
+            f"<code>{{usdt}}</code>\n\n"
+            f"{EMOJI_COIN} <b>BTC:</b>\n"
+            f"<code>{{btc}}</code></blockquote>"
         ),
-        'requisites_buttons': {
-            'ton': "TON-кошелёк",
-            'card': "Карта",
-            'stars': "Stars",
-            'usdt': "USDT-кошелёк",
-            'btc': "BTC-кошелёк"
-        },
-        'requisites_edit_prompt': "Введите новый {field}:",
-        'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
-        'requisites_edit_success': "Данные обновлены!",
     },
     'en': {
         'welcome': (
-            "Welcome to Lolz Deals\n\n"
-            "Your trusted P2P guarantor:\n"
-            "— Automated deals with NFTs and currencies\n"
-            "— Full protection for both parties\n"
-            "— Referral program — 50% of fee\n"
-            "— Goods transfer via manager: @LZSupp\n\n"
-            "Channel: @LiveLolz"
+            f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>\n\n"
+            f"<blockquote><b>{EMOJI_ROBOT} Your trusted P2P guarantor:</b>\n"
+            f"— <b>Automated deals</b> with NFTs and currencies\n"
+            f"— {EMOJI_SHIELD} <b>Full protection</b> for both parties\n"
+            f"— {EMOJI_MONEY} <b>Referral program</b> — <i>50% of fee</i>\n"
+            f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: @LZSupp</blockquote>\n\n"
+            f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz"
         ),
-        'lang_prompt': "Select language:",
+        'lang_prompt': f"<b>{EMOJI_GLOSSARY} Select language:</b>",
         'lang_ru': "Russian",
         'lang_en': "English",
         'referral': (
-            "Referral program\n\n"
-            "Your referral link:\n"
+            f"<b>{EMOJI_MONEY} Referral program</b>\n\n"
+            f"<blockquote><b>Your referral link:</b>\n"
             f"<code>{REF_LINK_TEMPLATE}</code>\n"
-            "Referrals: 0\n"
-            "Earned: 0.0 TON\n\n"
-            "Bonus: 50% of commission from each referral deal!"
+            f"<b>Referrals:</b> 0\n"
+            f"<b>Earned:</b> 0.0 TON</blockquote>\n\n"
+            f"<b>Bonus:</b> 50% of commission from each referral deal!"
         ),
         'copy_btn': "Copy referral link",
-        'back_btn': "📋 Back to menu",
+        'back_btn': "Back to menu",
         'balance': "Balance",
         'deals': "My deals",
         'referrals_btn': "Referrals",
@@ -232,88 +235,83 @@ TEXTS = {
         'create': "Create deal",
         'support': "Support",
         'deals_title': "My deals",
-        'deals_stats': "Total: {total} Completed: {completed}",
+        'deals_stats': f"Total: {{total}} {EMOJI_TROPHY} Completed: {{completed}} {EMOJI_PACKAGE}",
         'deals_list_empty': "You have no deals yet.",
         'search_btn': "Search by code",
         'search_prompt': "Enter deal code (e.g., Yi4qbQ98):",
         'deal_not_found': "Deal with code {code} not found.",
         'deal_details': (
-            "Deal details #{code}\n\n"
+            "<b>Deal details #{code}</b>\n\n"
             "Buyer: @{buyer}\n"
             "Seller: @{seller}\n"
             "Amount: {amount} {currency}\n"
             "Time: {time}\n"
             "Date: {date}"
         ),
-        'balance_title': "Your balance:",
-        'balance_empty': "❤️ Your balance is empty",
-        'balance_amount': "❤️ Your balance: {amount} TON",
+        'balance_title': f"{EMOJI_MONEY} <b>Your balance:</b>",
+        'balance_empty': "Your balance is empty",
+        'balance_amount': "Your balance: {amount} TON",
         'completed_deals': "Completed deals: {completed}",
-        'withdraw_need': "❗ You need at least 2 completed deals to withdraw",
-        'withdraw_btn': "💎 Withdraw",
-        'transactions_btn': "🌐 Transactions",
+        'withdraw_need': "You need at least 2 completed deals to withdraw",
+        'withdraw_btn': f"{EMOJI_LIGHTNING} Withdraw",
+        'transactions_btn': f"{EMOJI_PACKAGE} Transactions",
         'transactions_empty': "Transaction history is empty.",
         'withdraw_form_requisites': "Enter your withdrawal requisites (wallet, card, etc.):",
         'withdraw_form_amount': "Enter amount to withdraw (available {amount} TON):",
         'withdraw_too_much': "Amount exceeds available balance.",
-        'withdraw_success': "✅ Withdraw request for {amount} TON sent! Wait for admin confirmation.",
+        'withdraw_success': f"{EMOJI_MONEY} Withdraw request for {{amount}} TON sent! Wait for admin confirmation.",
         'withdraw_fail': "Error creating request. Try again later.",
         'admin_panel': (
-            "Admin panel\n\n"
-            "Available commands:\n"
-            "/hyteam — show this panel\n"
-            "/vvteam — withdrawal requests\n"
-            "/chat [@user or id] [text] — reply to user\n"
-            "/hostlebuy [code] — mark deal as paid\n"
-            "/ref [code] — notify about gift issue\n"
-            "/boost_success [number] — increase successful deals count\n"
-            "/giveadmin [@user or id] [time] — grant admin (1m,1h,1d,1w,1M,1y)\n"
-            "/addbalance [id] [amount] — add balance\n"
-            "/logs — view logs"
+            f"{EMOJI_SHIELD} <b>Admin panel</b>\n\n"
+            f"{EMOJI_ROBOT} <b>Available commands:</b>\n"
+            f"/hyteam — show this panel\n"
+            f"/vvteam — withdrawal requests\n"
+            f"/chat [@user or id] [text] — reply to user\n"
+            f"/hostlebuy [code] — mark deal as paid\n"
+            f"/ref [code] — notify about gift issue\n"
+            f"/boost_success [number] — increase successful deals count\n"
+            f"/giveadmin [@user or id] [time] — grant admin (1m,1h,1d,1w,1M,1y)\n"
+            f"/addbalance [id] [amount] — add balance\n"
+            f"/logs — view logs"
         ),
-        'admin_no_access': "You don't have access to this command.",
+        'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
         'admin_withdraw_list': "Withdrawal requests:\n{list}",
         'admin_withdraw_empty': "No active withdrawal requests.",
-        'admin_withdraw_confirm': "Withdrawal request for {amount} TON from user {user} confirmed!",
+        'admin_withdraw_confirm': f"{EMOJI_MONEY} Withdrawal request for {{amount}} TON from user {{user}} confirmed!",
         'admin_withdraw_error': "Error confirming.",
         'chat_success': "Message sent to user.",
         'chat_fail': "Failed to send message.",
         'chat_no_deal': "You have no deals with this user.",
         'chat_not_first': "User hasn't contacted support first.",
         'chat_limit': "Message limit exceeded for this deal (max 10).",
-        'hostlebuy_success': "Deal {code} marked as paid, notifications sent.",
+        'hostlebuy_success': f"{EMOJI_MONEY} Deal {{code}} marked as paid, notifications sent.",
         'hostlebuy_fail': "Deal not found or already paid.",
-        'ref_success': "Gift issue notification sent to participants of deal {code}.",
+        'ref_success': f"{EMOJI_MEGAPHONE} Gift issue notification sent to participants of deal {{code}}.",
         'ref_fail': "Deal not found or inactive.",
-        'boost_success': "Successful deals count increased by {num}.",
+        'boost_success': f"{EMOJI_TROPHY} Successful deals count increased by {{num}}.",
         'boost_fail': "Enter a number.",
-        'giveadmin_success': "User {user} granted admin rights for {time_str}.",
+        'giveadmin_success': f"{EMOJI_SHIELD} User {{user}} granted admin rights for {{time_str}}.",
         'giveadmin_fail': "Invalid time format. Use: 1m, 1h, 1d, 1w, 1M, 1y",
-        'addbalance_success': "User {user} got {amount} TON. New balance: {new_balance} TON.",
+        'addbalance_success': f"{EMOJI_MONEY} User {{user}} got {{amount}} TON. New balance: {{new_balance}} TON.",
         'addbalance_fail': "Invalid format. Use: /addbalance [id] [amount]",
         'addbalance_user_not_found': "User with ID {user} not found.",
-        'logs_header': "Action logs:\n\n",
+        'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
         'logs_empty': "No logs yet.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'support_contact': "Support\n\nContact our manager:\n@boyfrer",
-        'requisites_title': "My requisites",
+        'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
+        'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
-            "TON wallet:\n{ton}\n\n"
-            "Card:\n{card}\n\n"
-            "Stars:\n{stars}\n\n"
-            "USDT (TRC20):\n{usdt}\n\n"
-            "BTC:\n{btc}"
+            f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
+            f"<code>{{ton}}</code>\n\n"
+            f"{EMOJI_CARD} <b>Card:</b>\n"
+            f"<code>{{card}}</code>\n\n"
+            f"{EMOJI_STAR} <b>Stars:</b>\n"
+            f"<code>{{stars}}</code>\n\n"
+            f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
+            f"<code>{{usdt}}</code>\n\n"
+            f"{EMOJI_COIN} <b>BTC:</b>\n"
+            f"<code>{{btc}}</code></blockquote>"
         ),
-        'requisites_buttons': {
-            'ton': "TON wallet",
-            'card': "Card",
-            'stars': "Stars",
-            'usdt': "USDT wallet",
-            'btc': "BTC wallet"
-        },
-        'requisites_edit_prompt': "Enter new {field}:",
-        'requisites_edit_invalid': "Invalid format. Try again.",
-        'requisites_edit_success': "Data updated!",
     }
 }
 
@@ -358,7 +356,7 @@ async def delete_previous(user_id: int, chat_id: int):
             pass
         del user_last_message[user_id]
 
-# ---------- Отправка с баннером ----------
+# ---------- Отправка с баннером (всегда с HTML) ----------
 async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
     user_id = target.from_user.id if hasattr(target, 'from_user') else target.chat.id
     chat_id = target.chat.id if hasattr(target, 'chat') else target.message.chat.id
@@ -371,38 +369,59 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
         user_last_message[user_id] = msg.message_id
     except Exception as e:
         logging.error(f"Ошибка отправки баннера: {e}")
-        try:
-            if isinstance(target, types.Message):
-                msg = await target.answer(text, parse_mode=None, reply_markup=keyboard)
-            else:
-                msg = await target.message.answer(text, parse_mode=None, reply_markup=keyboard)
-            user_last_message[user_id] = msg.message_id
-        except Exception as e2:
-            logging.error(f"Ошибка отправки текста: {e2}")
-            if isinstance(target, types.Message):
-                msg = await target.answer("Произошла ошибка. Попробуйте позже.")
-            else:
-                msg = await target.message.answer("Произошла ошибка. Попробуйте позже.")
-            user_last_message[user_id] = msg.message_id
+        # Всегда отправляем с HTML, даже если фото не загрузилось
+        if isinstance(target, types.Message):
+            msg = await target.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        else:
+            msg = await target.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        user_last_message[user_id] = msg.message_id
 
 # ---------- Отправка главного меню ----------
 async def send_main_menu(target, user_id: int):
     text = get_text(user_id, 'welcome')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=get_text(user_id, 'balance'), callback_data="balance"),
-            InlineKeyboardButton(text=get_text(user_id, 'deals'), callback_data="deals")
+            InlineKeyboardButton(
+                text="💰 " + get_text(user_id, 'balance'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE,
+                callback_data="balance"
+            ),
+            InlineKeyboardButton(
+                text="📦 " + get_text(user_id, 'deals'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_DEALS,
+                callback_data="deals"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'referrals_btn'), callback_data="referrals"),
-            InlineKeyboardButton(text=get_text(user_id, 'lang_btn'), callback_data="lang")
+            InlineKeyboardButton(
+                text="💰 " + get_text(user_id, 'referrals_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS,
+                callback_data="referrals"
+            ),
+            InlineKeyboardButton(
+                text="📖 " + get_text(user_id, 'lang_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_LANG,
+                callback_data="lang"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'requisites'), callback_data="requisites"),
-            InlineKeyboardButton(text=get_text(user_id, 'create'), callback_data="create")
+            InlineKeyboardButton(
+                text="📌 " + get_text(user_id, 'requisites'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES,
+                callback_data="requisites"
+            ),
+            InlineKeyboardButton(
+                text="📦 " + get_text(user_id, 'create'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_CREATE,
+                callback_data="create"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'support'), callback_data="support")
+            InlineKeyboardButton(
+                text="🛡 " + get_text(user_id, 'support'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT,
+                callback_data="support"
+            )
         ]
     ])
     await send_with_banner(target, text, keyboard)
@@ -417,7 +436,7 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# РАЗДЕЛ БАЛАНСА (новый интерфейс)
+# РАЗДЕЛ БАЛАНСА
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "balance")
@@ -440,20 +459,32 @@ async def cb_balance(callback: types.CallbackQuery):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=get_text(user_id, 'withdraw_btn'), callback_data="withdraw")
+            InlineKeyboardButton(
+                text="⚡ " + get_text(user_id, 'withdraw_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW,
+                callback_data="withdraw"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'transactions_btn'), callback_data="transactions")
+            InlineKeyboardButton(
+                text="📦 " + get_text(user_id, 'transactions_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT,
+                callback_data="transactions"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")
+            InlineKeyboardButton(
+                text="📌 " + get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )
         ]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
     log_action(user_id, "balance", "просмотр баланса")
 
-# ---------- Обработчик вывода ----------
+# ---------- Вывод средств ----------
 @dp.callback_query(lambda c: c.data == "withdraw")
 async def cb_withdraw(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -500,13 +531,13 @@ async def process_amount(message: Message, state: FSMContext):
     await send_main_menu(message, user_id)
     log_action(user_id, "withdraw_request", f"сумма {amount} TON, реквизиты {requisites}")
 
-# ---------- Обработчик транзакций ----------
+# ---------- Транзакции ----------
 @dp.callback_query(lambda c: c.data == "transactions")
 async def cb_transactions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = f"{get_text(user_id, 'transactions_btn')}\n\n{get_text(user_id, 'transactions_empty')}"
+    text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -526,7 +557,7 @@ async def cb_deals(callback: types.CallbackQuery):
     total = len(deals)
     completed = sum(1 for d in deals if d.get('status') == 'completed')
     stats = get_text(user_id, 'deals_stats').format(total=total, completed=completed)
-    text = f"{get_text(user_id, 'deals_title')}\n\n{stats}"
+    text = f"<b>{get_text(user_id, 'deals_title')}</b>\n\n<blockquote>{stats}</blockquote>"
     if deals:
         items = []
         for d in deals[:5]:
@@ -537,10 +568,18 @@ async def cb_deals(callback: types.CallbackQuery):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=get_text(user_id, 'search_btn'), callback_data="search_deal")
+            InlineKeyboardButton(
+                text="📌 " + get_text(user_id, 'search_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH,
+                callback_data="search_deal"
+            )
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")
+            InlineKeyboardButton(
+                text="📌 " + get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )
         ]
     ])
     await send_with_banner(callback, text, keyboard)
@@ -573,14 +612,14 @@ async def process_search_code(message: Message, state: FSMContext):
             date=deal.get('date', '2026-01-01')
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(message, details, keyboard)
         log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
 # ============================================================
-# РАЗДЕЛ МОИ РЕКВИЗИТЫ (с редактированием)
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "requisites")
@@ -598,121 +637,11 @@ async def cb_requisites(callback: types.CallbackQuery):
     )
     text = f"{title}\n\n{body}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['ton'], callback_data="edit_ton"),
-            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['card'], callback_data="edit_card")
-        ],
-        [
-            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['stars'], callback_data="edit_stars"),
-            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['usdt'], callback_data="edit_usdt")
-        ],
-        [
-            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['btc'], callback_data="edit_btc")
-        ],
-        [
-            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")
-        ]
+        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
     log_action(user_id, "requisites", "просмотр реквизитов")
-
-# ---------- Редактирование реквизитов ----------
-@dp.callback_query(lambda c: c.data == "edit_ton")
-async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_ton)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="TON-кошелёк"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_card")
-async def edit_card(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_card)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="карта (16 цифр)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_stars")
-async def edit_stars(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_stars)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="Stars (@username)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_usdt")
-async def edit_usdt(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_usdt)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="USDT (TRC20 адрес)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_btc")
-async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_btc)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
-    await callback.answer()
-
-# ---------- Обработчики ввода ----------
-@dp.message(RequisitesEdit.waiting_ton)
-async def process_ton(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_ton(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'ton': value})
-    await state.clear()
-    await cb_requisites(message)  # используем callback для обновления
-    log_action(user_id, "edit_requisites", f"ton обновлён")
-
-@dp.message(RequisitesEdit.waiting_card)
-async def process_card(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_card(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'card': value})
-    await state.clear()
-    await cb_requisites(message)
-    log_action(user_id, "edit_requisites", f"card обновлён")
-
-@dp.message(RequisitesEdit.waiting_stars)
-async def process_stars(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_stars(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'stars': value})
-    await state.clear()
-    await cb_requisites(message)
-    log_action(user_id, "edit_requisites", f"stars обновлён")
-
-@dp.message(RequisitesEdit.waiting_usdt)
-async def process_usdt(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_usdt(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'usdt': value})
-    await state.clear()
-    await cb_requisites(message)
-    log_action(user_id, "edit_requisites", f"usdt обновлён")
-
-@dp.message(RequisitesEdit.waiting_btc)
-async def process_btc(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_btc(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'btc': value})
-    await state.clear()
-    await cb_requisites(message)
-    log_action(user_id, "edit_requisites", f"btc обновлён")
 
 # ============================================================
 # ОСТАЛЬНЫЕ КНОПКИ
@@ -723,7 +652,7 @@ async def cb_support(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = get_text(user_id, 'support_contact')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -736,10 +665,10 @@ async def cb_referrals(callback: types.CallbackQuery):
     ref_text = ref_text.replace(REF_LINK_TEMPLATE, ref_link)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), callback_data="copy_ref")
+            InlineKeyboardButton(text="📌 " + get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")
+            InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, ref_text, keyboard)
@@ -759,11 +688,11 @@ async def cb_lang(callback: types.CallbackQuery):
     text = get_text(user_id, 'lang_prompt')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=f"🇷🇺 {get_text(user_id, 'lang_ru')}", callback_data="lang_ru"),
-            InlineKeyboardButton(text=f"🇺🇸 {get_text(user_id, 'lang_en')}", callback_data="lang_en")
+            InlineKeyboardButton(text="🇷🇺 " + get_text(user_id, 'lang_ru'), callback_data="lang_ru"),
+            InlineKeyboardButton(text="🇺🇸 " + get_text(user_id, 'lang_en'), callback_data="lang_en")
         ],
         [
-            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")
+            InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, text, keyboard)
@@ -789,7 +718,7 @@ async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = "Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else "Create deal (stub)"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -1057,7 +986,7 @@ async def cmd_logs(message: types.Message):
         ))
     text = header + "\n".join(entries)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "logs", "просмотр логов")
