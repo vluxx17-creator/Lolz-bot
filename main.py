@@ -28,10 +28,10 @@ logging.basicConfig(level=logging.INFO)
 
 # ---------- Хранилище данных ----------
 user_lang = {}
-user_balance = {}              # user_id: float
-user_deals = {}                # user_id: list of deal dicts
-user_completed_deals = {}      # user_id: int
-withdraw_requests = []         # список заявок на вывод
+user_balance = {}
+user_deals = {}
+user_completed_deals = {}
+withdraw_requests = []
 user_last_message = {}
 temp_admins = {}
 logs = []
@@ -55,9 +55,9 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 
 # ============================================================
-# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (исправлен баланс)
 # ============================================================
-CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
+CUSTOM_EMOJI_BALANCE    = "5794280000383358988"  # 💰 (исправлен на рабочий ID)
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
 CUSTOM_EMOJI_LANG       = "5197269100878907942"
@@ -90,7 +90,7 @@ def get_user_requisites(user_id: int):
         'btc': '—'
     })
 
-# ---------- Тексты ----------
+# ---------- Тексты (без изменений) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
@@ -138,7 +138,6 @@ TEXTS = {
             "Время: {time}\n"
             "Дата: {date}"
         ),
-        # ---------- Баланс ----------
         'balance_title': f"{EMOJI_MONEY} <b>Ваш баланс:</b>",
         'balance_empty': "Ваш баланс пока пуст",
         'balance_amount': "Ваш баланс: {amount} TON",
@@ -152,7 +151,6 @@ TEXTS = {
         'withdraw_too_much': "Сумма превышает доступный баланс.",
         'withdraw_success': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON отправлена! Ожидайте подтверждения администратора.",
         'withdraw_fail': "Ошибка при создании заявки. Попробуйте позже.",
-        # ---------- Админ ----------
         'admin_panel': (
             f"{EMOJI_SHIELD} <b>Админ-панель</b>\n\n"
             f"{EMOJI_ROBOT} <b>Доступные команды:</b>\n"
@@ -249,7 +247,6 @@ TEXTS = {
             "Time: {time}\n"
             "Date: {date}"
         ),
-        # ---------- Balance ----------
         'balance_title': f"{EMOJI_MONEY} <b>Your balance:</b>",
         'balance_empty': "Your balance is empty",
         'balance_amount': "Your balance: {amount} TON",
@@ -263,7 +260,6 @@ TEXTS = {
         'withdraw_too_much': "Amount exceeds available balance.",
         'withdraw_success': f"{EMOJI_MONEY} Withdraw request for {{amount}} TON sent! Wait for admin confirmation.",
         'withdraw_fail': "Error creating request. Try again later.",
-        # ---------- Admin ----------
         'admin_panel': (
             f"{EMOJI_SHIELD} <b>Admin panel</b>\n\n"
             f"{EMOJI_ROBOT} <b>Available commands:</b>\n"
@@ -318,7 +314,7 @@ TEXTS = {
     }
 }
 
-# ---------- Вспомогательные функции ----------
+# ---------- Вспомогательные функции (без изменений) ----------
 def get_text(user_id: int, key: str) -> str:
     lang = user_lang.get(user_id, 'ru')
     return TEXTS[lang].get(key, TEXTS['ru'][key])
