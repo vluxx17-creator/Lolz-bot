@@ -38,7 +38,7 @@ logs = []
 user_requisites = {}
 
 # ============================================================
-# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (эти ID точно работают)
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (по вашим ID)
 # ============================================================
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
@@ -48,33 +48,61 @@ EMOJI_MONEY     = '<tg-emoji emoji-id="5794280000383358988">💰</tg-emoji>'
 EMOJI_PACKAGE   = '<tg-emoji emoji-id="5794241397217304511">📦</tg-emoji>'
 EMOJI_MEGAPHONE = '<tg-emoji emoji-id="5893290369629556374">📢</tg-emoji>'
 EMOJI_GLOSSARY  = '<tg-emoji emoji-id="5893255507380014983">📖</tg-emoji>'
+
+# Новые для реквизитов
 EMOJI_PIN       = '<tg-emoji emoji-id="5253961389285845297">📌</tg-emoji>'
 EMOJI_DIAMOND   = '<tg-emoji emoji-id="5377620962390857342">💎</tg-emoji>'
 EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
 EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 
+# Дополнительные из нового списка
+EMOJI_BRIDGE    = '<tg-emoji emoji-id="5301166339749070453">🌉</tg-emoji>'
+EMOJI_CASH      = '<tg-emoji emoji-id="5197434882321567830">💵</tg-emoji>'
+EMOJI_GOLD      = '<tg-emoji emoji-id="5474537505015486009">💰</tg-emoji>'
+EMOJI_STAR2     = '<tg-emoji emoji-id="5897792062291449826">⭐️</tg-emoji>'
+EMOJI_GEM       = '<tg-emoji emoji-id="5348296214183950233">💎</tg-emoji>'
+EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
+EMOJI_SHIELD2   = '<tg-emoji emoji-id="5197288647275071607">🛡</tg-emoji>'
+EMOJI_PIN2      = '<tg-emoji emoji-id="5258461531464539536">📌</tg-emoji>'
+EMOJI_PEN       = '<tg-emoji emoji-id="5197269100878907942">✍️</tg-emoji>'
+EMOJI_COIN2     = '<tg-emoji emoji-id="5287231198098117669">💰</tg-emoji>'
+EMOJI_COIN3     = '<tg-emoji emoji-id="5278467510604160626">💰</tg-emoji>'
+EMOJI_CHECK     = '<tg-emoji emoji-id="5206607081334906820">✔️</tg-emoji>'
+EMOJI_LIST      = '<tg-emoji emoji-id="5444856076954520455">🧾</tg-emoji>'
+EMOJI_BRIEF     = '<tg-emoji emoji-id="5893255507380014983">💼</tg-emoji>'
+EMOJI_HEART     = '<tg-emoji emoji-id="5265074015868822600">❤️</tg-emoji>'
+EMOJI_CARD2     = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
+EMOJI_STAR3     = '<tg-emoji emoji-id="5267500801240092311">⭐</tg-emoji>'
+EMOJI_COIN4     = '<tg-emoji emoji-id="5377620962390857342">🪙</tg-emoji>'
+EMOJI_BRIEF2    = '<tg-emoji emoji-id="5445221832074483553">💼</tg-emoji>'
+EMOJI_COIN5     = '<tg-emoji emoji-id="5264713049637409446">🪙</tg-emoji>'
+EMOJI_CHART     = '<tg-emoji emoji-id="5190806721286657692">📊</tg-emoji>'
+EMOJI_GLOBE     = '<tg-emoji emoji-id="5447410659077661506">🌐</tg-emoji>'
+EMOJI_USERS     = '<tg-emoji emoji-id="5958460691550572213">👥</tg-emoji>'
+
 # ============================================================
-# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ КНОПОК (используем те же, что в тексте)
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (чистые ID, без HTML)
 # ============================================================
-# Для каждой кнопки берём ID из соответствующей текстовой переменной
-CUSTOM_EMOJI_BALANCE    = "5794280000383358988"  # 💰
-CUSTOM_EMOJI_DEALS      = "5794241397217304511"  # 📦
-CUSTOM_EMOJI_REFERRALS  = "5794280000383358988"  # 💰 (можно другой, но пока так)
-CUSTOM_EMOJI_LANG       = "5893255507380014983"  # 📖 (или 🏆)
-CUSTOM_EMOJI_REQUISITES = "5253961389285845297"  # 📌
-CUSTOM_EMOJI_CREATE     = "5794241397217304511"  # 📦
-CUSTOM_EMOJI_SUPPORT    = "5794085322400733645"  # 🛡
-CUSTOM_EMOJI_COPY       = "5253961389285845297"  # 📌
-CUSTOM_EMOJI_BACK       = "5253961389285845297"  # 📌 (для назад)
-CUSTOM_EMOJI_SEARCH     = "5253961389285845297"  # 📌 (для поиска)
-CUSTOM_EMOJI_WITHDRAW   = "5456140674028019486"  # ⚡
-CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"  # 📦
-CUSTOM_EMOJI_TON        = "5301166339749070453"  # (из задания, оставляем как есть)
-CUSTOM_EMOJI_CARD_BTN   = "5197434882321567830"
-CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
-CUSTOM_EMOJI_USDT       = "5474537505015486009"
-CUSTOM_EMOJI_BTC        = "5348296214183950233"
+CUSTOM_EMOJI_BALANCE    = "6041730074376410123"   # 📥
+CUSTOM_EMOJI_DEALS      = "5417924076503062111"   # 💰
+CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"   # 🤝
+CUSTOM_EMOJI_LANG       = "5197269100878907942"   # ✍️
+CUSTOM_EMOJI_REQUISITES = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_CREATE     = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"   # 🌐
+CUSTOM_EMOJI_COPY       = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_BACK       = "5197269100878907942"   # ✍️ (можно использовать другой)
+CUSTOM_EMOJI_SEARCH     = "6084717714847306634"   # 📌
+CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"   # 📥
+CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"   # 📦
+
+# Для кнопок реквизитов (используем ID из второго набора)
+CUSTOM_EMOJI_TON        = "5301166339749070453"   # 🌉
+CUSTOM_EMOJI_CARD_BTN   = "5197434882321567830"   # 💵
+CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"   # ⭐️
+CUSTOM_EMOJI_USDT       = "5474537505015486009"   # 💰
+CUSTOM_EMOJI_BTC        = "5348296214183950233"   # 💎
 
 # ---------- FSM для вывода ----------
 class WithdrawForm(StatesGroup):
@@ -91,7 +119,7 @@ def get_user_requisites(user_id: int):
         'btc': '—'
     })
 
-# ---------- Тексты (с HTML-тегами и премиум-эмодзи) ----------
+# ---------- Тексты (с премиум-эмодзи) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
 
 TEXTS = {
@@ -369,7 +397,6 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
         user_last_message[user_id] = msg.message_id
     except Exception as e:
         logging.error(f"Ошибка отправки баннера: {e}")
-        # Всегда отправляем с HTML, даже если фото не загрузилось
         if isinstance(target, types.Message):
             msg = await target.answer(text, parse_mode="HTML", reply_markup=keyboard)
         else:
@@ -382,43 +409,43 @@ async def send_main_menu(target, user_id: int):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="💰 " + get_text(user_id, 'balance'),
+                text="📥 Баланс",
                 icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE,
                 callback_data="balance"
             ),
             InlineKeyboardButton(
-                text="📦 " + get_text(user_id, 'deals'),
+                text="💰 Мои сделки",
                 icon_custom_emoji_id=CUSTOM_EMOJI_DEALS,
                 callback_data="deals"
             )
         ],
         [
             InlineKeyboardButton(
-                text="💰 " + get_text(user_id, 'referrals_btn'),
+                text="🤝 Рефералы",
                 icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS,
                 callback_data="referrals"
             ),
             InlineKeyboardButton(
-                text="📖 " + get_text(user_id, 'lang_btn'),
+                text="✍️ Язык / Lang",
                 icon_custom_emoji_id=CUSTOM_EMOJI_LANG,
                 callback_data="lang"
             )
         ],
         [
             InlineKeyboardButton(
-                text="📌 " + get_text(user_id, 'requisites'),
+                text="📌 Мои реквизиты",
                 icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES,
                 callback_data="requisites"
             ),
             InlineKeyboardButton(
-                text="📦 " + get_text(user_id, 'create'),
+                text="📌 Создать сделку",
                 icon_custom_emoji_id=CUSTOM_EMOJI_CREATE,
                 callback_data="create"
             )
         ],
         [
             InlineKeyboardButton(
-                text="🛡 " + get_text(user_id, 'support'),
+                text="🌐 Техподдержка",
                 icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT,
                 callback_data="support"
             )
@@ -460,21 +487,21 @@ async def cb_balance(callback: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="⚡ " + get_text(user_id, 'withdraw_btn'),
+                text="📥 Вывод средств",
                 icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW,
                 callback_data="withdraw"
             )
         ],
         [
             InlineKeyboardButton(
-                text="📦 " + get_text(user_id, 'transactions_btn'),
+                text="📦 Транзакции",
                 icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT,
                 callback_data="transactions"
             )
         ],
         [
             InlineKeyboardButton(
-                text="📌 " + get_text(user_id, 'back_btn'),
+                text="✍️ Назад в меню",
                 icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
                 callback_data="back_to_menu"
             )
@@ -537,7 +564,7 @@ async def cb_transactions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -569,14 +596,14 @@ async def cb_deals(callback: types.CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="📌 " + get_text(user_id, 'search_btn'),
+                text="📌 Поиск по коду",
                 icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH,
                 callback_data="search_deal"
             )
         ],
         [
             InlineKeyboardButton(
-                text="📌 " + get_text(user_id, 'back_btn'),
+                text="✍️ Назад в меню",
                 icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
                 callback_data="back_to_menu"
             )
@@ -612,7 +639,7 @@ async def process_search_code(message: Message, state: FSMContext):
             date=deal.get('date', '2026-01-01')
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(message, details, keyboard)
         log_action(user_id, "search_deal", f"код {code}")
@@ -637,7 +664,7 @@ async def cb_requisites(callback: types.CallbackQuery):
     )
     text = f"{title}\n\n{body}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -652,7 +679,7 @@ async def cb_support(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = get_text(user_id, 'support_contact')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -665,10 +692,10 @@ async def cb_referrals(callback: types.CallbackQuery):
     ref_text = ref_text.replace(REF_LINK_TEMPLATE, ref_link)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="📌 " + get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")
+            InlineKeyboardButton(text="📌 Скопировать реф. ссылку", icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")
         ],
         [
-            InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
+            InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, ref_text, keyboard)
@@ -688,11 +715,11 @@ async def cb_lang(callback: types.CallbackQuery):
     text = get_text(user_id, 'lang_prompt')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🇷🇺 " + get_text(user_id, 'lang_ru'), callback_data="lang_ru"),
-            InlineKeyboardButton(text="🇺🇸 " + get_text(user_id, 'lang_en'), callback_data="lang_en")
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
+            InlineKeyboardButton(text="🇺🇸 English", callback_data="lang_en")
         ],
         [
-            InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
+            InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, text, keyboard)
@@ -718,7 +745,7 @@ async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = "Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else "Create deal (stub)"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -986,7 +1013,7 @@ async def cmd_logs(message: types.Message):
         ))
     text = header + "\n".join(entries)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📌 " + get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="✍️ Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "logs", "просмотр логов")
