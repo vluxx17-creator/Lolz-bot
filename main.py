@@ -38,7 +38,7 @@ logs = []
 user_requisites = {}
 
 # ============================================================
-# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА
+# ПРЕМИУМ-ЭМОДЗИ ДЛЯ ТЕКСТА (используются только в тексте)
 # ============================================================
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
@@ -55,7 +55,7 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 
 # ============================================================
-# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК
+# ID ПРЕМИУМ-ЭМОДЗИ ДЛЯ ИНЛАЙН-КНОПОК (исправлены)
 # ============================================================
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
@@ -69,11 +69,13 @@ CUSTOM_EMOJI_BACK       = "5197269100878907942"
 CUSTOM_EMOJI_SEARCH     = "6084717714847306634"
 CUSTOM_EMOJI_WITHDRAW   = "6041730074376410123"
 CUSTOM_EMOJI_TRANSACT   = "5794241397217304511"
-CUSTOM_EMOJI_TON        = "5301166339749070453"
-CUSTOM_EMOJI_CARD_BTN   = "5197434882321567830"
-CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
-CUSTOM_EMOJI_USDT       = "5474537505015486009"
-CUSTOM_EMOJI_BTC        = "5348296214183950233"
+
+# ----- Исправленные ID для реквизитов -----
+CUSTOM_EMOJI_TON        = "5377620962390857342"   # 💎 (TON)
+CUSTOM_EMOJI_CARD_BTN   = "5445353829304387411"   # 💳 (Карта)
+CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"   # ⭐️ (Stars)
+CUSTOM_EMOJI_USDT       = "5794280000383358988"   # 💰 (USDT)
+CUSTOM_EMOJI_BTC        = "5379773896352355687"   # 🪙 (BTC)
 
 # ---------- FSM для редактирования реквизитов ----------
 class RequisitesEdit(StatesGroup):
@@ -674,7 +676,7 @@ async def process_search_code(message: Message, state: FSMContext):
     await state.clear()
 
 # ============================================================
-# РАЗДЕЛ МОИ РЕКВИЗИТЫ (с редактированием)
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ (с исправленными ID эмодзи)
 # ============================================================
 
 async def show_requisites(target, user_id: int):
@@ -690,7 +692,6 @@ async def show_requisites(target, user_id: int):
     )
     text = f"{title}\n\n{body}"
     
-    # Создаём клавиатуру с кнопками для каждого поля
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -1215,7 +1216,7 @@ async def cmd_logs(message: types.Message):
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "logs", "просмотр логов")
 
-# ---------- HTTP-сервер ----------
+# ---------- HTTP-сервер для Render ----------
 async def health_check(request):
     return web.Response(text="OK")
 
