@@ -42,6 +42,14 @@ class WithdrawForm(StatesGroup):
     waiting_requisites = State()
     waiting_amount = State()
 
+# ---------- FSM для редактирования реквизитов (ДОБАВЛЕНО) ----------
+class RequisitesEdit(StatesGroup):
+    waiting_ton = State()
+    waiting_card = State()
+    waiting_stars = State()
+    waiting_usdt = State()
+    waiting_btc = State()
+
 # ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
