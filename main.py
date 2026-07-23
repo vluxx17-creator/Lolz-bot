@@ -28,10 +28,10 @@ logging.basicConfig(level=logging.INFO)
 
 # ---------- Хранилище данных ----------
 user_lang = {}
-user_balance = {}
-user_deals = {}              # user_id: list of deal dicts (code, status, buyer, seller, amount, currency, time, date)
-user_completed_deals = {}    # user_id: int
-withdraw_requests = []
+user_balance = {}              # user_id: float
+user_deals = {}                # user_id: list of deal dicts
+user_completed_deals = {}      # user_id: int
+withdraw_requests = []         # список заявок на вывод
 user_last_message = {}
 temp_admins = {}
 logs = []
@@ -75,7 +75,12 @@ CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
 CUSTOM_EMOJI_USDT       = "5474537505015486009"
 CUSTOM_EMOJI_BTC        = "5348296214183950233"
 
-# ---------- Работа с реквизитами (без FSM) ----------
+# ---------- FSM для вывода ----------
+class WithdrawForm(StatesGroup):
+    waiting_requisites = State()
+    waiting_amount = State()
+
+# ---------- Работа с реквизитами (только чтение) ----------
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
         'ton': '—',
@@ -133,7 +138,8 @@ TEXTS = {
             "Время: {time}\n"
             "Дата: {date}"
         ),
-        'balance_title': f"{EMOJI_MONEY} Ваш баланс:",
+        # ---------- Баланс ----------
+        'balance_title': f"{EMOJI_MONEY} <b>Ваш баланс:</b>",
         'balance_empty': "Ваш баланс пока пуст",
         'balance_amount': "Ваш баланс: {amount} TON",
         'completed_deals': "Завершённых сделок: {completed}",
@@ -146,6 +152,7 @@ TEXTS = {
         'withdraw_too_much': "Сумма превышает доступный баланс.",
         'withdraw_success': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON отправлена! Ожидайте подтверждения администратора.",
         'withdraw_fail': "Ошибка при создании заявки. Попробуйте позже.",
+        # ---------- Админ ----------
         'admin_panel': (
             f"{EMOJI_SHIELD} <b>Админ-панель</b>\n\n"
             f"{EMOJI_ROBOT} <b>Доступные команды:</b>\n"
@@ -183,7 +190,6 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'temporarily_unavailable': "Функция временно недоступна. Скоро появится!",
         'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
@@ -243,7 +249,8 @@ TEXTS = {
             "Time: {time}\n"
             "Date: {date}"
         ),
-        'balance_title': f"{EMOJI_MONEY} Your balance:",
+        # ---------- Balance ----------
+        'balance_title': f"{EMOJI_MONEY} <b>Your balance:</b>",
         'balance_empty': "Your balance is empty",
         'balance_amount': "Your balance: {amount} TON",
         'completed_deals': "Completed deals: {completed}",
@@ -256,6 +263,7 @@ TEXTS = {
         'withdraw_too_much': "Amount exceeds available balance.",
         'withdraw_success': f"{EMOJI_MONEY} Withdraw request for {{amount}} TON sent! Wait for admin confirmation.",
         'withdraw_fail': "Error creating request. Try again later.",
+        # ---------- Admin ----------
         'admin_panel': (
             f"{EMOJI_SHIELD} <b>Admin panel</b>\n\n"
             f"{EMOJI_ROBOT} <b>Available commands:</b>\n"
@@ -293,7 +301,6 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
         'logs_empty': "No logs yet.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'temporarily_unavailable': "Feature temporarily unavailable. Coming soon!",
         'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
         'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
@@ -410,18 +417,118 @@ async def cmd_start(message: types.Message):
     await send_main_menu(message, user_id)
     log_action(user_id, "start", "запуск бота")
 
-# ---------- Кнопка "Баланс" (заглушка) ----------
+# ============================================================
+# РАЗДЕЛ БАЛАНСА (полный функционал)
+# ============================================================
+
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = get_text(user_id, 'temporarily_unavailable')
+    balance = get_user_balance(user_id)
+    completed = get_user_completed_deals(user_id)
+    
+    if balance == 0:
+        balance_text = get_text(user_id, 'balance_empty')
+    else:
+        balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
+    
+    text = (
+        f"{get_text(user_id, 'balance_title')}\n\n"
+        f"{balance_text}\n"
+        f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
+        f"{get_text(user_id, 'withdraw_need')}"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'withdraw_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW,
+                callback_data="withdraw"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'transactions_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT,
+                callback_data="transactions"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )
+        ]
+    ])
+    await send_with_banner(callback, text, keyboard)
+    await callback.answer()
+    log_action(user_id, "balance", "просмотр баланса")
+
+# ---------- Обработчик вывода средств ----------
+@dp.callback_query(lambda c: c.data == "withdraw")
+async def cb_withdraw(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    completed = get_user_completed_deals(user_id)
+    if completed < 2:
+        await callback.answer(get_text(user_id, 'withdraw_need'), show_alert=True)
+        return
+    await callback.message.answer(get_text(user_id, 'withdraw_form_requisites'))
+    await state.set_state(WithdrawForm.waiting_requisites)
+    await callback.answer()
+    log_action(user_id, "withdraw_start", "начало оформления вывода")
+
+@dp.message(WithdrawForm.waiting_requisites)
+async def process_requisites(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    requisites = message.text
+    await state.update_data(requisites=requisites)
+    balance = get_user_balance(user_id)
+    await message.answer(get_text(user_id, 'withdraw_form_amount').format(amount=balance))
+    await state.set_state(WithdrawForm.waiting_amount)
+
+@dp.message(WithdrawForm.waiting_amount)
+async def process_amount(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    try:
+        amount = float(message.text.replace(',', '.'))
+    except ValueError:
+        await message.answer("Введите число (например, 10.5)")
+        return
+    balance = get_user_balance(user_id)
+    if amount > balance:
+        await message.answer(get_text(user_id, 'withdraw_too_much'))
+        return
+    data = await state.get_data()
+    requisites = data['requisites']
+    withdraw_requests.append({
+        'user_id': user_id,
+        'amount': amount,
+        'requisites': requisites,
+        'status': 'pending'
+    })
+    await message.answer(get_text(user_id, 'withdraw_success').format(amount=amount))
+    await state.clear()
+    await send_main_menu(message, user_id)
+    log_action(user_id, "withdraw_request", f"сумма {amount} TON, реквизиты {requisites}")
+
+# ---------- Обработчик транзакций ----------
+@dp.callback_query(lambda c: c.data == "transactions")
+async def cb_transactions(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "transactions", "просмотр транзакций")
 
-# ---------- Кнопка "Мои сделки" (полный функционал) ----------
+# ============================================================
+# РАЗДЕЛ МОИ СДЕЛКИ (полный функционал)
+# ============================================================
+
 class DealSearch(StatesGroup):
     waiting_code = State()
 
@@ -497,7 +604,10 @@ async def process_search_code(message: Message, state: FSMContext):
         log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
-# ---------- Кнопка "Мои реквизиты" (только отображение) ----------
+# ============================================================
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ (только просмотр)
+# ============================================================
+
 @dp.callback_query(lambda c: c.data == "requisites")
 async def cb_requisites(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -523,7 +633,10 @@ async def cb_requisites(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "requisites", "просмотр реквизитов")
 
-# ---------- Кнопка "Техподдержка" ----------
+# ============================================================
+# ОСТАЛЬНЫЕ КНОПКИ
+# ============================================================
+
 @dp.callback_query(lambda c: c.data == "support")
 async def cb_support(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -534,7 +647,6 @@ async def cb_support(callback: types.CallbackQuery):
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
-# ---------- Рефералы ----------
 @dp.callback_query(lambda c: c.data == "referrals")
 async def cb_referrals(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -560,7 +672,6 @@ async def cb_copy_ref(callback: types.CallbackQuery):
     await callback.answer(f"{ref_link}", show_alert=True)
     log_action(user_id, "copy_ref", "копирование реферальной ссылки")
 
-# ---------- Язык ----------
 @dp.callback_query(lambda c: c.data == "lang")
 async def cb_lang(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -586,14 +697,12 @@ async def cb_lang_set(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "lang_change", f"язык {lang_code}")
 
-# ---------- Назад в меню ----------
 @dp.callback_query(lambda c: c.data == "back_to_menu")
 async def cb_back_to_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     await send_main_menu(callback, user_id)
     await callback.answer()
 
-# ---------- Кнопка "Создать сделку" (заглушка) ----------
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
@@ -605,7 +714,10 @@ async def cb_create(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "create_deal", "создание сделки (заглушка)")
 
-# ---------- Админ-панель ----------
+# ============================================================
+# АДМИН-ПАНЕЛЬ
+# ============================================================
+
 ADMIN_ID = 8297446667
 
 @dp.message(Command("hyteam"))
