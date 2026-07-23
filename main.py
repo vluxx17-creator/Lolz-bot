@@ -29,8 +29,8 @@ logging.basicConfig(level=logging.INFO)
 # ---------- Хранилище данных ----------
 user_lang = {}
 user_balance = {}
-user_deals = {}
-user_completed_deals = {}
+user_deals = {}              # user_id: list of deal dicts (code, status, buyer, seller, amount, currency, time, date)
+user_completed_deals = {}    # user_id: int
 withdraw_requests = []
 user_last_message = {}
 temp_admins = {}
@@ -75,15 +75,7 @@ CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
 CUSTOM_EMOJI_USDT       = "5474537505015486009"
 CUSTOM_EMOJI_BTC        = "5348296214183950233"
 
-# ---------- FSM для редактирования реквизитов ----------
-class RequisitesEdit(StatesGroup):
-    waiting_ton = State()
-    waiting_card = State()
-    waiting_stars = State()
-    waiting_usdt = State()
-    waiting_btc = State()
-
-# ---------- Работа с реквизитами ----------
+# ---------- Работа с реквизитами (без FSM) ----------
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
         'ton': '—',
@@ -92,27 +84,6 @@ def get_user_requisites(user_id: int):
         'usdt': '—',
         'btc': '—'
     })
-
-def save_user_requisites(user_id: int, data: dict):
-    if user_id not in user_requisites:
-        user_requisites[user_id] = {}
-    user_requisites[user_id].update(data)
-
-# ---------- Валидация ----------
-def validate_ton(value: str) -> bool:
-    return len(value.strip()) > 5
-
-def validate_card(value: str) -> bool:
-    return bool(re.fullmatch(r'\d{16}', value.strip()))
-
-def validate_stars(value: str) -> bool:
-    return bool(re.fullmatch(r'@[\w_]+', value.strip()))
-
-def validate_usdt(value: str) -> bool:
-    return bool(re.fullmatch(r'T[1-9A-HJ-NP-Za-km-z]{33}', value.strip()))
-
-def validate_btc(value: str) -> bool:
-    return len(value.strip()) > 25
 
 # ---------- Тексты ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref{user_id}"
@@ -151,7 +122,7 @@ TEXTS = {
         'deals_title': "Мои сделки",
         'deals_stats': f"Всего: {{total}} {EMOJI_TROPHY} Завершено: {{completed}} {EMOJI_PACKAGE}",
         'deals_list_empty': "У вас пока нет сделок.",
-        'search_btn': f"{EMOJI_PACKAGE} Поиск по коду",
+        'search_btn': "Поиск по коду",
         'search_prompt': "Введите код сделки (например, Yi4qbQ98):",
         'deal_not_found': "Сделка с кодом {code} не найдена.",
         'deal_details': (
@@ -212,7 +183,7 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'temporarily_unavailable': f"{EMOJI_PACKAGE} Функция временно недоступна. Скоро появится!",
+        'temporarily_unavailable': "Функция временно недоступна. Скоро появится!",
         'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
@@ -227,16 +198,6 @@ TEXTS = {
             f"{EMOJI_COIN} <b>BTC:</b>\n"
             f"<code>{{btc}}</code></blockquote>"
         ),
-        'requisites_buttons': {
-            'ton': f"{EMOJI_DIAMOND} TON-кошелёк",
-            'card': f"{EMOJI_CARD} Карта",
-            'stars': f"{EMOJI_STAR} Stars",
-            'usdt': f"{EMOJI_MONEY} USDT-кошелёк",
-            'btc': f"{EMOJI_COIN} BTC-кошелёк"
-        },
-        'requisites_edit_prompt': "Введите новый {field}:",
-        'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
-        'requisites_edit_success': "Данные обновлены!",
     },
     'en': {
         'welcome': (
@@ -271,7 +232,7 @@ TEXTS = {
         'deals_title': "My deals",
         'deals_stats': f"Total: {{total}} {EMOJI_TROPHY} Completed: {{completed}} {EMOJI_PACKAGE}",
         'deals_list_empty': "You have no deals yet.",
-        'search_btn': f"{EMOJI_PACKAGE} Search by code",
+        'search_btn': "Search by code",
         'search_prompt': "Enter deal code (e.g., Yi4qbQ98):",
         'deal_not_found': "Deal with code {code} not found.",
         'deal_details': (
@@ -332,7 +293,7 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
         'logs_empty': "No logs yet.",
         'logs_entry': "{time} | {user} | {action} | {data}",
-        'temporarily_unavailable': f"{EMOJI_PACKAGE} Feature temporarily unavailable. Coming soon!",
+        'temporarily_unavailable': "Feature temporarily unavailable. Coming soon!",
         'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
         'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
@@ -347,16 +308,6 @@ TEXTS = {
             f"{EMOJI_COIN} <b>BTC:</b>\n"
             f"<code>{{btc}}</code></blockquote>"
         ),
-        'requisites_buttons': {
-            'ton': f"{EMOJI_DIAMOND} TON wallet",
-            'card': f"{EMOJI_CARD} Card",
-            'stars': f"{EMOJI_STAR} Stars",
-            'usdt': f"{EMOJI_MONEY} USDT wallet",
-            'btc': f"{EMOJI_COIN} BTC wallet"
-        },
-        'requisites_edit_prompt': "Enter new {field}:",
-        'requisites_edit_invalid': "Invalid format. Try again.",
-        'requisites_edit_success': "Data updated!",
     }
 }
 
@@ -470,16 +421,107 @@ async def cb_balance(callback: types.CallbackQuery):
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
-# ---------- Кнопка "Мои сделки" (заглушка) ----------
+# ---------- Кнопка "Мои сделки" (полный функционал) ----------
+class DealSearch(StatesGroup):
+    waiting_code = State()
+
 @dp.callback_query(lambda c: c.data == "deals")
 async def cb_deals(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = get_text(user_id, 'temporarily_unavailable')
+    deals = user_deals.get(user_id, [])
+    total = len(deals)
+    completed = sum(1 for d in deals if d.get('status') == 'completed')
+    stats = get_text(user_id, 'deals_stats').format(total=total, completed=completed)
+    text = f"<b>{get_text(user_id, 'deals_title')}</b>\n\n<blockquote>{stats}</blockquote>"
+    if deals:
+        items = []
+        for d in deals[:5]:
+            items.append(f"#{d['code']}")
+        text += "\n" + "\n".join(items)
+    else:
+        text += "\n" + get_text(user_id, 'deals_list_empty')
+    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'search_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH,
+                callback_data="search_deal"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )
+        ]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
+    log_action(user_id, "deals", "просмотр сделок")
+
+@dp.callback_query(lambda c: c.data == "search_deal")
+async def cb_search_deal(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    await callback.message.answer(get_text(user_id, 'search_prompt'))
+    await state.set_state(DealSearch.waiting_code)
+    await callback.answer()
+
+@dp.message(DealSearch.waiting_code)
+async def process_search_code(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    code = message.text.strip()
+    deals = user_deals.get(user_id, [])
+    deal = next((d for d in deals if d['code'] == code), None)
+    if not deal:
+        await message.answer(get_text(user_id, 'deal_not_found').format(code=code))
+    else:
+        details = get_text(user_id, 'deal_details').format(
+            code=deal['code'],
+            buyer=deal.get('buyer', 'unknown'),
+            seller=deal.get('seller', 'unknown'),
+            amount=deal.get('amount', 0),
+            currency=deal.get('currency', 'TON'),
+            time=deal.get('time', '12:00'),
+            date=deal.get('date', '2026-01-01')
+        )
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text=get_text(user_id, 'back_btn'),
+                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+                callback_data="back_to_menu"
+            )]
+        ])
+        await send_with_banner(message, details, keyboard)
+        log_action(user_id, "search_deal", f"код {code}")
+    await state.clear()
+
+# ---------- Кнопка "Мои реквизиты" (только отображение) ----------
+@dp.callback_query(lambda c: c.data == "requisites")
+async def cb_requisites(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    req = get_user_requisites(user_id)
+    ton = req['ton']
+    card = req['card']
+    stars = req['stars']
+    usdt = req['usdt']
+    btc = req['btc']
+    title = get_text(user_id, 'requisites_title')
+    body = get_text(user_id, 'requisites_body').format(
+        ton=ton, card=card, stars=stars, usdt=usdt, btc=btc
+    )
+    text = f"{title}\n\n{body}"
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=get_text(user_id, 'back_btn'),
+            icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
+            callback_data="back_to_menu"
+        )]
+    ])
+    await send_with_banner(callback, text, keyboard)
+    await callback.answer()
+    log_action(user_id, "requisites", "просмотр реквизитов")
 
 # ---------- Кнопка "Техподдержка" ----------
 @dp.callback_query(lambda c: c.data == "support")
@@ -555,177 +597,13 @@ async def cb_back_to_menu(callback: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "create")
 async def cb_create(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    text = f"{EMOJI_PACKAGE} Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else f"{EMOJI_PACKAGE} Create deal (stub)"
+    text = "Создание сделки (заглушка)" if user_lang.get(user_id, 'ru') == 'ru' else "Create deal (stub)"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
     log_action(user_id, "create_deal", "создание сделки (заглушка)")
-
-# ============================================================
-# МОИ РЕКВИЗИТЫ (с симметричными инлайн-кнопками)
-# ============================================================
-
-async def show_requisites(target, user_id: int):
-    req = get_user_requisites(user_id)
-    ton = req['ton']
-    card = req['card']
-    stars = req['stars']
-    usdt = req['usdt']
-    btc = req['btc']
-    
-    title = get_text(user_id, 'requisites_title')
-    body = get_text(user_id, 'requisites_body').format(
-        ton=ton, card=card, stars=stars, usdt=usdt, btc=btc
-    )
-    text = f"{title}\n\n{body}"
-    
-    # Симметричное расположение кнопок: 2 в ряд, последняя отдельно (центрирована)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['ton'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_TON,
-                callback_data="edit_ton"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['card'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN,
-                callback_data="edit_card"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['stars'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN,
-                callback_data="edit_stars"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['usdt'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_USDT,
-                callback_data="edit_usdt"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['btc'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_BTC,
-                callback_data="edit_btc"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
-        ]
-    ])
-    await send_with_banner(target, text, keyboard)
-
-@dp.callback_query(lambda c: c.data == "requisites")
-async def cb_requisites(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    await show_requisites(callback, user_id)
-    await callback.answer()
-
-# ---------- Редактирование полей (FSM) ----------
-@dp.callback_query(lambda c: c.data == "edit_ton")
-async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_ton)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="TON-кошелёк"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_card")
-async def edit_card(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_card)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="карта (16 цифр)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_stars")
-async def edit_stars(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_stars)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="Stars (@username)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_usdt")
-async def edit_usdt(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_usdt)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="USDT (TRC20 адрес)"))
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "edit_btc")
-async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_btc)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
-    await callback.answer()
-
-# ---------- Обработчики ввода для каждого состояния ----------
-@dp.message(RequisitesEdit.waiting_ton)
-async def process_ton(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_ton(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'ton': value})
-    await state.clear()
-    await show_requisites(message, user_id)
-    log_action(user_id, "edit_requisites", f"ton обновлён")
-
-@dp.message(RequisitesEdit.waiting_card)
-async def process_card(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_card(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'card': value})
-    await state.clear()
-    await show_requisites(message, user_id)
-    log_action(user_id, "edit_requisites", f"card обновлён")
-
-@dp.message(RequisitesEdit.waiting_stars)
-async def process_stars(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_stars(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'stars': value})
-    await state.clear()
-    await show_requisites(message, user_id)
-    log_action(user_id, "edit_requisites", f"stars обновлён")
-
-@dp.message(RequisitesEdit.waiting_usdt)
-async def process_usdt(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_usdt(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'usdt': value})
-    await state.clear()
-    await show_requisites(message, user_id)
-    log_action(user_id, "edit_requisites", f"usdt обновлён")
-
-@dp.message(RequisitesEdit.waiting_btc)
-async def process_btc(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    value = message.text.strip()
-    if not validate_btc(value):
-        await message.answer(get_text(user_id, 'requisites_edit_invalid'))
-        return
-    save_user_requisites(user_id, {'btc': value})
-    await state.clear()
-    await show_requisites(message, user_id)
-    log_action(user_id, "edit_requisites", f"btc обновлён")
 
 # ---------- Админ-панель ----------
 ADMIN_ID = 8297446667
