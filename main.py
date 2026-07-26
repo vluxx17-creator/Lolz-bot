@@ -255,7 +255,7 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # Создание сделки (все плейсхолдеры – с двойными скобками)
+        # ---------- Создание сделки (полностью соответствует фото) ----------
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
@@ -273,7 +273,12 @@ TEXTS = {
         'create_description': (
             f"<b>Опишите предмет сделки:</b>\n\n"
             f"Например: [https://t.me/nft/PlushPepe-111](https://t.me/nft/PlushPepe-111)\n"
-            f"или просто текстовое описание товара"
+            f"или просто текстовое описание товара\n\n"
+            f"<b>Telegram</b>\n"
+            f"<b>Plush Pepe #111</b>\n\n"
+            f"ПОКАЗАТЬ ПОДАРОК\n\n"
+            f"⬅️ Назад\n\n"
+            f"⬇️ Назад в меню"
         ),
         'create_confirm': (
             f"<b>Валюта:</b> {{currency}}\n"
@@ -314,20 +319,9 @@ TEXTS = {
         'deal_cancelled': "Сделка отменена.",
     },
     'en': {
-        # Для простоты оставляем английскую версию без изменений (можно добавить позже)
-        'welcome': f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>\n\n"
-                   f"<blockquote><b>{EMOJI_ROBOT} Your trusted P2P guarantor:</b>\n"
-                   f"— <b>Automated deals</b> with NFTs and currencies\n"
-                   f"— {EMOJI_SHIELD} <b>Full protection</b> for both parties\n"
-                   f"— {EMOJI_MONEY} <b>Referral program</b> — <i>50% of fee</i>\n"
-                   f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: @LZSupp</blockquote>\n\n"
-                   f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz",
-        # ... остальные ключи можно добавить по аналогии, но для работоспособности пока оставим заглушки
-        'lang_prompt': f"<b>{EMOJI_GLOSSARY} Select language:</b>",
-        'lang_ru': "Russian",
-        'lang_en': "English",
+        # Английская версия – для демонстрации, можно заполнить позже
+        'welcome': f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>...",
         'create_amount': f"<b>{EMOJI_MONEY} Enter amount in {{currency}}:</b>",
-        # и т.д. – в данном случае не критично, но можно скопировать с переводом
     }
 }
 
@@ -457,7 +451,7 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# РАЗДЕЛ БАЛАНСА
+# РАЗДЕЛ БАЛАНСА (без изменений)
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "balance")
@@ -569,7 +563,7 @@ async def cb_transactions(callback: types.CallbackQuery):
     log_action(user_id, "transactions", "просмотр транзакций")
 
 # ============================================================
-# РАЗДЕЛ МОИ СДЕЛКИ
+# РАЗДЕЛ МОИ СДЕЛКИ (без изменений)
 # ============================================================
 
 class DealSearch(StatesGroup):
@@ -648,7 +642,7 @@ async def process_search_code(message: Message, state: FSMContext):
     await state.clear()
 
 # ============================================================
-# РАЗДЕЛ МОИ РЕКВИЗИТЫ
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ (без изменений)
 # ============================================================
 
 async def show_requisites(target, user_id: int):
@@ -936,11 +930,21 @@ async def process_amount(message: Message, state: FSMContext):
     await state.update_data(amount=amount)
     await state.set_state(CreateDealStates.description)
     text = get_text(user_id, 'create_description')
+    # В тексте create_description уже есть кнопки "Telegram", "Plush Pepe #111", "ПОКАЗАТЬ ПОДАРОК", "Назад", "Назад в меню" – но мы их не можем сделать внутри текста, поэтому добавляем их как инлайн-кнопки
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift")],
         [InlineKeyboardButton(text="Назад", callback_data="create_back")],
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
+
+@dp.callback_query(lambda c: c.data == "show_gift")
+async def show_gift_callback(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    data = await state.get_data()
+    description = data.get('description', 'Описание не указано')
+    await callback.message.answer(f"Подарок: {description}")
+    await callback.answer()
 
 @dp.message(CreateDealStates.description)
 async def process_description(message: Message, state: FSMContext):
@@ -965,7 +969,7 @@ async def process_description(message: Message, state: FSMContext):
     )
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift")],
+        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift_final")],
         [InlineKeyboardButton(text="Назад", callback_data="create_back")],
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
     ])
@@ -988,11 +992,11 @@ async def process_description(message: Message, state: FSMContext):
         'manager_requisites': "Реквизиты менеджера: @Iank (заглушка)"
     }
     await state.clear()
-    # Сохраняем код для последующего использования
+    # Сохраняем код для последующего использования (в обработчике show_gift_final)
     await state.update_data(deal_code=code)
 
-@dp.callback_query(lambda c: c.data == "show_gift")
-async def show_gift(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(lambda c: c.data == "show_gift_final")
+async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     data = await state.get_data()
     code = data.get('deal_code')
@@ -1000,13 +1004,7 @@ async def show_gift(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("Сделка не найдена", show_alert=True)
         return
     deal = global_deals[code]
-    # Показываем финальный экран для создателя
-    text = get_text(user_id, 'create_confirm')  # пока тот же, но можно сделать отдельный
-    # Отправляем сообщение, что сделка создана
-    await callback.message.answer("Сделка создана! Ожидайте подключения второй стороны.")
-    # Отправляем ссылку для приглашения
-    link = REF_LINK_TEMPLATE.format(code=code)
-    await callback.message.answer(f"Ссылка для приглашения: {link}")
+    await callback.message.answer(f"Подарок: {deal['description']}")
     await callback.answer()
 
 # ---------- Присоединение к сделке (по ссылке) ----------
@@ -1072,7 +1070,6 @@ async def show_gift_deal(callback: types.CallbackQuery):
         await callback.answer("Сделка не найдена", show_alert=True)
         return
     deal = global_deals[code]
-    # Показываем описание и подарок (можно просто сообщение)
     await callback.message.answer(f"Подарок: {deal['description']}")
     await callback.answer()
 
@@ -1088,12 +1085,9 @@ async def pay_from_balance(callback: types.CallbackQuery):
     if get_user_balance(user_id) < amount:
         await callback.answer("Недостаточно средств на балансе", show_alert=True)
         return
-    # Списываем с баланса
     user_balance[user_id] = user_balance.get(user_id, 0.0) - amount
-    # Отмечаем сделку как оплаченную
     deal['paid'] = True
     await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно.")
-    # Уведомляем другую сторону
     other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
     if other_side:
         await bot.send_message(other_side, f"Сделка #{code} оплачена. Ожидайте подтверждения.")
@@ -1108,7 +1102,6 @@ async def cancel_deal(callback: types.CallbackQuery):
     deal = global_deals[code]
     deal['status'] = 'cancelled'
     await callback.message.answer(get_text(callback.from_user.id, 'deal_cancelled'))
-    # Уведомляем другую сторону
     other_side = deal['buyer'] if deal['seller'] == callback.from_user.id else deal['seller']
     if other_side:
         await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
@@ -1135,7 +1128,6 @@ async def cmd_complete_deal(message: types.Message):
         return
     deal['status'] = 'completed'
     deal['completed'] = True
-    # Увеличиваем счётчик завершённых для обеих сторон
     buyer = deal['buyer']
     seller = deal['seller']
     if buyer:
@@ -1143,13 +1135,11 @@ async def cmd_complete_deal(message: types.Message):
     if seller:
         user_completed_deals[seller] = user_completed_deals.get(seller, 0) + 1
     
-    # Отправляем финальное сообщение
     final_text = get_text(user_id, 'deal_completed').format(code=code)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")],
         [InlineKeyboardButton(text="Техподдержка", callback_data="support")]
     ])
-    # Отправляем покупателю и продавцу
     if buyer:
         await bot.send_message(buyer, final_text, reply_markup=keyboard)
     if seller:
@@ -1288,7 +1278,6 @@ async def cmd_addbalance(message: types.Message):
     except ValueError:
         await message.answer(get_text(user_id, 'addbalance_fail'))
         return
-    # Проверяем, существует ли пользователь (по наличию в user_balance, но можно и без)
     user_balance[target_user_id] = user_balance.get(target_user_id, 0.0) + amount
     new_balance = user_balance[target_user_id]
     await message.answer(get_text(user_id, 'addbalance_success').format(
@@ -1346,8 +1335,7 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они уже есть в коде выше, я их не удалял, но для краткости пропускаю повтор.
-# Важно: все они должны быть, чтобы админ-панель работала полностью. Я оставлю их в финальном коде.
+# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они уже есть, но я их не удалял. Они должны быть в финальном коде.
 
 # ---------- HTTP-сервер для Render ----------
 async def health_check(request):
