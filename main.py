@@ -30,16 +30,16 @@ logging.basicConfig(level=logging.INFO)
 
 # ---------- Хранилище данных ----------
 user_lang = {}
-user_balance = {}              # user_id: float
-frozen_balance = {}            # user_id: float (замороженные средства)
-user_deals = {}                # user_id: list of deal dicts
-user_completed_deals = {}      # user_id: int
+user_balance = {}
+frozen_balance = {}
+user_deals = {}
+user_completed_deals = {}
 withdraw_requests = []
 user_last_message = {}
 temp_admins = {}
 logs = []
 user_requisites = {}
-global_deals = {}              # code: deal_dict
+global_deals = {}
 
 # ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
@@ -56,7 +56,7 @@ EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
 EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
-EMOJI_CLOCK     = '<tg-emoji emoji-id="5456140674028019486">⏳</tg-emoji>'  # используем молнию для часов
+EMOJI_CLOCK     = '<tg-emoji emoji-id="5456140674028019486">⏳</tg-emoji>'
 
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
@@ -226,7 +226,7 @@ TEXTS = {
         'boost_success': f"{EMOJI_TROPHY} Счётчик успешных сделок увеличен на {{num}}.",
         'boost_fail': "Введите число.",
         'giveadmin_success': f"{EMOJI_SHIELD} Пользователь {{user}} получил права администратора на {{time_str}}.",
-        'giveadmin_fail": "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
+        'giveadmin_fail': "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
         'addbalance_success': f"{EMOJI_MONEY} Пользователю {{user}} начислено {{amount}} TON. Новый баланс: {{new_balance}} TON.",
         'addbalance_fail': "Неверный формат. Используйте: /addbalance [id] [сумма]",
         'addbalance_user_not_found': "Пользователь с ID {user} не найден.",
@@ -340,7 +340,6 @@ TEXTS = {
             f"{EMOJI_MEGAPHONE} Спасибо за проведение сделки в нашем боте. Мы очень дорожим безопасностью наших покупателей и продавцов."
         ),
         'deal_cancelled': "Сделка отменена.",
-        # Передача подарка
         'gift_sent_seller': (
             f"{EMOJI_PACKAGE} Вы отправили подарок по сделке #{{code}}. Ожидайте подтверждения от администратора."
         ),
@@ -370,7 +369,7 @@ TEXTS = {
         ),
     },
     'en': {
-        # ... можно добавить позже
+        # Английская версия (можно добавить позже)
     }
 }
 
@@ -480,18 +479,17 @@ async def cb_balance(callback: types.CallbackQuery):
     balance = get_user_balance(user_id)
     frozen = get_frozen_balance(user_id)
     completed = get_user_completed_deals(user_id)
-    if balance == 0:
+    if balance == 0 and frozen == 0:
         balance_text = get_text(user_id, 'balance_empty')
     else:
         balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
+    frozen_text = ""
     if frozen > 0:
-        frozen_text = get_text(user_id, 'frozen_amount').format(amount=frozen)
-    else:
-        frozen_text = ""
+        frozen_text = get_text(user_id, 'frozen_amount').format(amount=frozen) + "\n"
     text = (
         f"{get_text(user_id, 'balance_title')}\n\n"
         f"{balance_text}\n"
-        f"{frozen_text}\n"
+        f"{frozen_text}"
         f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
         f"{get_text(user_id, 'withdraw_need')}"
     )
@@ -1065,7 +1063,7 @@ async def pay_from_balance(callback: types.CallbackQuery):
 # ---------- Отправка подарка продавцом ----------
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
-    code = callback.data.split("_")[2]  # gift_sent_{code}
+    code = callback.data.split("_")[2]
     user_id = callback.from_user.id
     if code not in global_deals:
         await callback.answer("Сделка не найдена", show_alert=True)
@@ -1074,15 +1072,12 @@ async def gift_sent(callback: types.CallbackQuery):
     if deal.get('gift_sent', False):
         await callback.answer("Вы уже отправили подарок.", show_alert=True)
         return
-    # Отмечаем, что подарок отправлен
     deal['gift_sent'] = True
-    # Уведомляем админа
     buyer_id = deal['buyer']
     seller_id = deal['seller']
     if not buyer_id or not seller_id:
         await callback.answer("Ошибка: не хватает участников.", show_alert=True)
         return
-    # Получаем username (заглушка)
     buyer_username = "unknown"
     seller_username = "unknown"
     try:
@@ -1109,7 +1104,6 @@ async def gift_sent(callback: types.CallbackQuery):
         [InlineKeyboardButton(text="Отправить сообщение продавцу", callback_data=f"reply_seller_{code}")]
     ])
     await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
-    # Сообщение продавцу
     await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
     log_action(user_id, "gift_sent", f"код {code}")
     await callback.answer()
@@ -1129,27 +1123,21 @@ async def confirm_gift(callback: types.CallbackQuery):
     if deal.get('completed', False):
         await callback.answer("Сделка уже завершена", show_alert=True)
         return
-    # Завершаем сделку: размораживаем деньги продавцу и увеличиваем счётчики
     seller_id = deal['seller']
     amount = deal['amount']
     if seller_id:
-        # Снимаем заморозку
         frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
         if frozen_balance[seller_id] < 0:
             frozen_balance[seller_id] = 0.0
-        # Увеличиваем баланс продавца (деньги заморожены, но теперь они его)
         user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
-        # Увеличиваем счётчик завершённых сделок
         user_completed_deals[seller_id] = user_completed_deals.get(seller_id, 0) + 1
     buyer_id = deal['buyer']
     if buyer_id:
         user_completed_deals[buyer_id] = user_completed_deals.get(buyer_id, 0) + 1
     deal['status'] = 'completed'
     deal['completed'] = True
-    # Уведомления
     final_text = get_text(ADMIN_ID, 'gift_confirm_admin').format(code=code)
     await callback.message.answer(final_text, parse_mode="HTML")
-    # Уведомляем покупателя и продавца
     if buyer_id:
         await bot.send_message(buyer_id, get_text(buyer_id, 'gift_confirm_buyer').format(code=code))
     if seller_id:
@@ -1193,7 +1181,6 @@ async def process_admin_reply(message: Message, state: FSMContext):
         await state.clear()
         return
     msg = message.text
-    # Отправляем продавцу
     await bot.send_message(seller_id, get_text(seller_id, 'gift_reject_seller').format(message=msg))
     await message.answer(get_text(user_id, 'gift_reject_admin').format(message=msg))
     log_action(user_id, "reply_seller", f"код {code}, сообщение: {msg}")
@@ -1212,7 +1199,6 @@ async def cancel_deal(callback: types.CallbackQuery):
         await callback.answer("Сделка уже завершена", show_alert=True)
         return
     deal['status'] = 'cancelled'
-    # Возврат замороженных средств, если были
     if deal.get('paid', False):
         seller_id = deal['seller']
         amount = deal['amount']
@@ -1247,7 +1233,6 @@ async def cmd_complete_deal(message: types.Message):
     if deal['status'] == 'completed':
         await message.answer("Сделка уже завершена")
         return
-    # Аналогично confirm_gift, но без проверки подарка
     seller_id = deal['seller']
     amount = deal['amount']
     if seller_id:
@@ -1274,7 +1259,7 @@ async def cmd_complete_deal(message: types.Message):
     log_action(user_id, "complete_deal", f"код {code}")
 
 # ============================================================
-# ОСТАЛЬНЫЕ КНОПКИ (поддержка, рефералы, язык, назад)
+# ОСТАЛЬНЫЕ КНОПКИ
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "support")
@@ -1343,7 +1328,7 @@ async def create_back(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # ============================================================
-# АДМИН-КОМАНДЫ (все)
+# АДМИН-КОМАНДЫ
 # ============================================================
 
 ADMIN_ID = 8297446667
@@ -1354,7 +1339,6 @@ async def cmd_hyteam(message: types.Message):
     if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
-    # Улучшенная админ-панель с цитированием и выделением
     panel_text = (
         f"{EMOJI_SHIELD} <b>Админ-панель</b>\n\n"
         f"<blockquote>\n"
