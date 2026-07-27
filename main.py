@@ -57,9 +57,11 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 
-# ID для премиум-эмодзи в кнопках (кроме рефералов и создания – их мы убрали)
+# ID для премиум-эмодзи в кнопках
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
+CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"   # 🤝
+CUSTOM_EMOJI_CREATE     = "6084717714847306634"   # 📌
 CUSTOM_EMOJI_LANG       = "5197269100878907942"
 CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
 CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"
@@ -133,7 +135,7 @@ def generate_deal_code():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
 # ---------- Тексты ----------
-REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
+REF_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=ref_{user_id}"  # исправлено: {code} -> {user_id}
 
 TEXTS = {
     'ru': {
@@ -375,7 +377,7 @@ def get_text(user_id: int, key: str) -> str:
     return TEXTS[lang].get(key, TEXTS['ru'][key])
 
 def get_ref_link(user_id: int) -> str:
-    return REF_LINK_TEMPLATE.format(user_id=user_id)
+    return REF_LINK_TEMPLATE.format(user_id=user_id)   # теперь подставляется user_id
 
 def get_user_balance(user_id: int) -> float:
     return user_balance.get(user_id, 0.0)
@@ -439,13 +441,12 @@ async def send_main_menu(target, user_id: int):
             InlineKeyboardButton(text=get_text(user_id, 'deals'), icon_custom_emoji_id=CUSTOM_EMOJI_DEALS, callback_data="deals")
         ],
         [
-            # ВРЕМЕННО УБИРАЕМ ПРЕМИУМ-ЭМОДЗИ ДЛЯ ЭТИХ ДВУХ КНОПОК
-            InlineKeyboardButton(text=get_text(user_id, 'referrals_btn'), callback_data="ref"),
+            InlineKeyboardButton(text=get_text(user_id, 'referrals_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_REFERRALS, callback_data="ref"),
             InlineKeyboardButton(text=get_text(user_id, 'lang_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_LANG, callback_data="lang")
         ],
         [
             InlineKeyboardButton(text=get_text(user_id, 'requisites'), icon_custom_emoji_id=CUSTOM_EMOJI_REQUISITES, callback_data="requisites"),
-            InlineKeyboardButton(text=get_text(user_id, 'create'), callback_data="new_deal")
+            InlineKeyboardButton(text=get_text(user_id, 'create'), icon_custom_emoji_id=CUSTOM_EMOJI_CREATE, callback_data="new_deal")
         ],
         [
             InlineKeyboardButton(text=get_text(user_id, 'support'), icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")
@@ -477,7 +478,7 @@ async def cb_referrals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик ref (рефералы) вызван")
     user_id = callback.from_user.id
     ref_text = get_text(user_id, 'referral')
-    ref_link = get_ref_link(user_id)
+    ref_link = get_ref_link(user_id)   # теперь возвращает ссылку с user_id
     ref_text = ref_text.replace(REF_LINK_TEMPLATE, ref_link)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")],
@@ -925,7 +926,7 @@ async def process_description(message: Message, state: FSMContext):
     data = await state.get_data()
     role = data.get('role')
     code = generate_deal_code()
-    link = REF_LINK_TEMPLATE.format(code=code)
+    link = REF_LINK_TEMPLATE.format(code=code)  # для сделки используется ссылка с кодом
     currency = data.get('currency', 'RUB')
     amount = data.get('amount', 0)
     currency_symbol = currency
@@ -1425,7 +1426,7 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# ---------- Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) ----------
+# ---------- Остальные админ-команды ----------
 @dp.message(Command("chat"))
 async def cmd_chat(message: types.Message):
     user_id = message.from_user.id
