@@ -59,7 +59,6 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 
-# ID для инлайн-кнопок
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
@@ -969,6 +968,7 @@ async def process_description(message: Message, state: FSMContext):
     ])
     await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
+    # Сохраняем сделку в глобальный реестр
     global_deals[code] = {
         'code': code,
         'status': 'pending',
@@ -986,6 +986,7 @@ async def process_description(message: Message, state: FSMContext):
         'gift_sent': False,
         'manager_requisites': "Реквизиты менеджера: @Iank (заглушка)"
     }
+    logging.info(f"✅ Сделка создана с кодом {code}, сохранена в global_deals")
     await state.clear()
     await state.update_data(deal_code=code)
 
@@ -1069,7 +1070,7 @@ async def show_gift_deal(callback: types.CallbackQuery):
 
 @dp.callback_query(lambda c: c.data.startswith("pay_"))
 async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
-    logging.info("✅ Обработчик pay_ (оплата с баланса) вызван")
+    logging.info("✅ Обработчик pay_ (оплата с баланса) вызван, код: %s", callback.data.split("_")[1])
     code = callback.data.split("_")[1]
     if code not in global_deals:
         await callback.answer("Сделка не найдена", show_alert=True)
@@ -1094,8 +1095,11 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
+    logging.info("✅ Обработчик gift_sent вызван, полный data: %s", callback.data)
     code = callback.data.split("_")[2]
+    logging.info("✅ Извлечён код: %s", code)
     if code not in global_deals:
+        logging.error("❌ Код %s не найден в global_deals", code)
         await callback.answer("Сделка не найдена", show_alert=True)
         return
     user_id = callback.from_user.id
@@ -1640,15 +1644,8 @@ async def start_web_server():
     logging.info(f"Web server started on port {port}")
 
 async def main():
-    # Запускаем веб-сервер
     asyncio.create_task(start_web_server())
-    # Запускаем поллинг
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    # Обработка сигнала для корректного завершения
-    def signal_handler():
-        logging.info("Получен сигнал завершения, останавливаем бота...")
-        asyncio.create_task(dp.stop_polling())
-    signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
     asyncio.run(main())
