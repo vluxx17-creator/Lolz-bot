@@ -1,6 +1,8 @@
 import os
 import logging
 import asyncio
+import signal
+import sys
 import time
 import re
 import random
@@ -261,7 +263,6 @@ TEXTS = {
         'requisites_edit_prompt': "Введите новый {field}:",
         'requisites_edit_invalid': "Некорректный формат. Попробуйте снова.",
         'requisites_edit_success': "✅ Данные обновлены!",
-        # ---------- Создание сделки ----------
         'create_role': (
             f"<b>{EMOJI_TROPHY} Новая сделка</b>\n\n"
             f"Кем вы выступаете в этой сделке?\n\n"
@@ -1022,7 +1023,6 @@ async def join_deal(message: Message, user_id: int, code: str):
     creator_id = deal['creator']
     await bot.send_message(creator_id, f"К сделке #{code} присоединился {'продавец' if role == 'seller' else 'покупатель'}.")
 
-    # Отправляем сообщение присоединившемуся
     if role == 'buyer':
         text = get_text(user_id, 'deal_created_buyer').format(
             code=code,
@@ -1033,7 +1033,6 @@ async def join_deal(message: Message, user_id: int, code: str):
             amount=deal['amount'],
             manager_requisites=deal.get('manager_requisites', '—')
         )
-        # Покупатель: оплачивает, может показать подарок, отменить сделку
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
             [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_{code}")],
@@ -1048,7 +1047,6 @@ async def join_deal(message: Message, user_id: int, code: str):
             balance=get_user_balance(user_id),
             currency=deal['currency']
         )
-        # Продавец: передаёт подарок, может отменить сделку
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Я передал подарок", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_sent_{code}")],
             [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
@@ -1083,16 +1081,13 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
     if balance < amount:
         await callback.answer(f"Недостаточно средств на балансе. Доступно: {balance} {deal['currency']}", show_alert=True)
         return
-    # Списываем баланс
     user_balance[user_id] = balance - amount
     frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
     deal['paid'] = True
     await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
-    # Уведомляем продавца
     seller_id = deal['seller']
     if seller_id:
         await bot.send_message(seller_id, f"Сделка #{code} оплачена покупателем. Ожидайте подтверждения.")
-    # Очищаем состояние, чтобы избежать возврата к "укажите сумму"
     await state.clear()
     await callback.answer()
     log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
@@ -1114,7 +1109,6 @@ async def gift_sent(callback: types.CallbackQuery):
     if not buyer_id or not seller_id:
         await callback.answer("Ошибка: не хватает участников.", show_alert=True)
         return
-    # Получаем username
     buyer_username = "unknown"
     seller_username = "unknown"
     try:
@@ -1646,8 +1640,15 @@ async def start_web_server():
     logging.info(f"Web server started on port {port}")
 
 async def main():
+    # Запускаем веб-сервер
     asyncio.create_task(start_web_server())
+    # Запускаем поллинг
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    # Обработка сигнала для корректного завершения
+    def signal_handler():
+        logging.info("Получен сигнал завершения, останавливаем бота...")
+        asyncio.create_task(dp.stop_polling())
+    signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
     asyncio.run(main())
