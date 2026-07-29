@@ -968,7 +968,6 @@ async def process_description(message: Message, state: FSMContext):
     ])
     await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
-    # Сохраняем сделку в глобальный реестр
     global_deals[code] = {
         'code': code,
         'status': 'pending',
