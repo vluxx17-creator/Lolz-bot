@@ -41,7 +41,7 @@ logs = []
 user_requisites = {}
 global_deals = {}
 
-# ---------- Премиум-эмодзи для текста ----------
+# ---------- Премиум-эмодзи ----------
 EMOJI_TROPHY    = '<tg-emoji emoji-id="5893255507380014983">🏆</tg-emoji>'
 EMOJI_LIGHTNING = '<tg-emoji emoji-id="5456140674028019486">⚡</tg-emoji>'
 EMOJI_ROBOT     = '<tg-emoji emoji-id="5794164805065514131">🤖</tg-emoji>'
@@ -57,11 +57,10 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 
-# ID для премиум-эмодзи в кнопках
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
-CUSTOM_EMOJI_CREATE     = "6084717714847306634"
+CUSTOM_EMOJI_CREATE     = "5195033767969839232"  # 🚀 (изменено)
 CUSTOM_EMOJI_LANG       = "5197269100878907942"
 CUSTOM_EMOJI_REQUISITES = "6084717714847306634"
 CUSTOM_EMOJI_SUPPORT    = "5447410659077661506"
@@ -77,8 +76,7 @@ CUSTOM_EMOJI_USDT       = "5794280000383358988"
 CUSTOM_EMOJI_BTC        = "5379773896352355687"
 CUSTOM_EMOJI_ROCKET     = "5195033767969839232"
 CUSTOM_EMOJI_GIFT       = "5893255507380014983"
-# Добавляем CUSTOM_EMOJI_MONEY для кнопки "Покупатель"
-CUSTOM_EMOJI_MONEY      = "5794280000383358988"  # тот же ID, что и EMOJI_MONEY
+CUSTOM_EMOJI_MONEY      = "5794280000383358988"
 
 # ---------- FSM ----------
 class CreateDealStates(StatesGroup):
@@ -137,9 +135,7 @@ def generate_deal_code():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
 # ---------- Тексты ----------
-# Для рефералов используется user_id
 REF_LINK_USER = "https://t.me/lolzgaranterbot?start=ref_{user_id}"
-# Для сделок используется code
 DEAL_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
 
 TEXTS = {
@@ -212,7 +208,8 @@ TEXTS = {
             f"/boost_success [число] — увеличить счётчик успешных сделок\n"
             f"/giveadmin [@user или id] [время] — выдать админку (1m,1h,1d,1w,1M,1y)\n"
             f"/addbalance [id] [сумма] — начислить баланс\n"
-            f"/logs — просмотр логов"
+            f"/logs — просмотр логов\n"
+            f"/complete_deal [код] — завершить сделку вручную"
         ),
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
@@ -330,7 +327,7 @@ TEXTS = {
             f"{{description}}"
         ),
         'deal_created_seller': (
-            f"<b>{EMOJI_TROPHY} К сделке #{{code}} присоединился продавец</b>\n\n"
+            f"<b>{EMOJI_TROPHY} Вы присоединились к сделке #{{code}} как продавец.</b>\n\n"
             f"<blockquote>\n"
             f"Реквизиты менеджера для оплаты: {{manager_requisites}}\n"
             f"Завершённых сделок у продавца: {{seller_deals}}\n"
@@ -477,7 +474,6 @@ async def cmd_start(message: types.Message):
 # ОСНОВНЫЕ ОБРАБОТЧИКИ
 # ============================================================
 
-# ---------- Рефералы (callback_data="ref") ----------
 @dp.callback_query(lambda c: c.data == "ref")
 async def cb_referrals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик ref (рефералы) вызван")
@@ -493,11 +489,10 @@ async def cb_referrals(callback: types.CallbackQuery):
     await callback.answer()
     log_action(user_id, "referrals", "просмотр рефералов")
 
-# ---------- Создать сделку (callback_data="new_deal") ----------
 @dp.callback_query(lambda c: c.data == "new_deal")
 async def cb_create(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ Обработчик new_deal (создать сделку) вызван")
-    await callback.answer()  # снимаем загрузку
+    await callback.answer()
     user_id = callback.from_user.id
     await state.clear()
     await state.set_state(CreateDealStates.role)
@@ -1008,6 +1003,7 @@ async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
 
 # ---------- Присоединение к сделке ----------
 async def join_deal(message: Message, user_id: int, code: str):
+    logging.info(f"✅ join_deal вызван для кода {code}, пользователь {user_id}")
     if code not in global_deals:
         await message.answer("Сделка не найдена или уже завершена.")
         return
@@ -1071,7 +1067,8 @@ async def show_gift_deal(callback: types.CallbackQuery):
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("pay_"))
-async def pay_from_balance(callback: types.CallbackQuery):
+async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
+    logging.info("✅ Обработчик pay_ (оплата с баланса) вызван")
     code = callback.data.split("_")[1]
     if code not in global_deals:
         await callback.answer("Сделка не найдена", show_alert=True)
@@ -1083,13 +1080,16 @@ async def pay_from_balance(callback: types.CallbackQuery):
     if balance < amount:
         await callback.answer(f"Недостаточно средств на балансе. Доступно: {balance} {deal['currency']}", show_alert=True)
         return
+    # Списываем баланс
     user_balance[user_id] = balance - amount
     frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
     deal['paid'] = True
     await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
+    # Уведомляем другую сторону
     other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
     if other_side:
         await bot.send_message(other_side, f"Сделка #{code} оплачена. Ожидайте подтверждения.")
+    await state.clear()
     await callback.answer()
     log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
 
@@ -1346,7 +1346,7 @@ async def cb_transactions(callback: types.CallbackQuery):
     log_action(user_id, "transactions", "просмотр транзакций")
 
 # ============================================================
-# АДМИН-КОМАНДЫ
+# АДМИН-КОМАНДЫ (полный набор)
 # ============================================================
 
 ADMIN_ID = 8297446667
