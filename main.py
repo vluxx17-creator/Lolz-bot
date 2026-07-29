@@ -77,6 +77,8 @@ CUSTOM_EMOJI_USDT       = "5794280000383358988"
 CUSTOM_EMOJI_BTC        = "5379773896352355687"
 CUSTOM_EMOJI_ROCKET     = "5195033767969839232"
 CUSTOM_EMOJI_GIFT       = "5893255507380014983"
+# Добавляем CUSTOM_EMOJI_MONEY для кнопки "Покупатель"
+CUSTOM_EMOJI_MONEY      = "5794280000383358988"  # тот же ID, что и EMOJI_MONEY
 
 # ---------- FSM ----------
 class CreateDealStates(StatesGroup):
@@ -495,8 +497,7 @@ async def cb_referrals(callback: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data == "new_deal")
 async def cb_create(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ Обработчик new_deal (создать сделку) вызван")
-    # Обязательно отвечаем, чтобы убрать загрузку
-    await callback.answer()
+    await callback.answer()  # снимаем загрузку
     user_id = callback.from_user.id
     await state.clear()
     await state.set_state(CreateDealStates.role)
@@ -511,7 +512,6 @@ async def cb_create(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
     try:
-        # Отправляем сообщение без баннера, чтобы избежать проблем с загрузкой фото
         await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
     except Exception as e:
         logging.error(f"❌ Ошибка при отправке сообщения: {e}")
@@ -948,7 +948,7 @@ async def process_description(message: Message, state: FSMContext):
     data = await state.get_data()
     role = data.get('role')
     code = generate_deal_code()
-    link = DEAL_LINK_TEMPLATE.format(code=code)  # используем шаблон для сделок
+    link = DEAL_LINK_TEMPLATE.format(code=code)
     currency = data.get('currency', 'RUB')
     amount = data.get('amount', 0)
     currency_symbol = currency
