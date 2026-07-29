@@ -57,6 +57,7 @@ EMOJI_STAR      = '<tg-emoji emoji-id="5438496463044752972">⭐️</tg-emoji>'
 EMOJI_COIN      = '<tg-emoji emoji-id="5379773896352355687">🪙</tg-emoji>'
 EMOJI_ROCKET    = '<tg-emoji emoji-id="5195033767969839232">🚀</tg-emoji>'
 
+# ID для инлайн-кнопок
 CUSTOM_EMOJI_BALANCE    = "6041730074376410123"
 CUSTOM_EMOJI_DEALS      = "5417924076503062111"
 CUSTOM_EMOJI_REFERRALS  = "5357080225463149588"
