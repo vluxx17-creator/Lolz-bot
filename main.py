@@ -104,7 +104,7 @@ class AdminReply(StatesGroup):
     waiting_message = State()
 
 class GiftReject(StatesGroup):
-    waiting_reason = State()   # новое состояние для отказа в подарке
+    waiting_reason = State()
 
 # ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
@@ -143,7 +143,6 @@ def generate_deal_code():
 REF_LINK_USER = "https://t.me/lolzgaranterbot?start=ref_{user_id}"
 DEAL_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
 
-# Менеджер – заменён на @zelenkasupports
 MANAGER_USERNAME = "@zelenkasupports"
 MANAGER_REQUISITES = f"Реквизиты менеджера: {MANAGER_USERNAME} (заглушка)"
 
@@ -1359,7 +1358,7 @@ async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         logging.error(f"Ошибка в show_gift_final: {e}")
 
-# ---------- Присоединение к сделке ----------
+# ---------- Присоединение к сделке (исправлено) ----------
 async def join_deal(message: Message, user_id: int, code: str):
     logging.info(f"✅ join_deal вызван для кода {code}, пользователь {user_id}")
     if code not in global_deals:
@@ -1378,8 +1377,40 @@ async def join_deal(message: Message, user_id: int, code: str):
         deal['status'] = 'active'
 
     creator_id = deal['creator']
-    await bot.send_message(creator_id, f"К сделке #{code} присоединился {'продавец' if role == 'seller' else 'покупатель'}.")
 
+    # Отправляем создателю его интерфейс, а не простое уведомление
+    if deal['role'] == 'buyer':  # создатель - покупатель, присоединился продавец
+        text_for_creator = get_text(creator_id, 'deal_created_buyer').format(
+            code=code,
+            buyer_id=creator_id,
+            buyer_deals=get_user_completed_deals(creator_id),
+            description=deal['description'],
+            currency=deal['currency'],
+            amount=deal['amount'],
+            manager_requisites=deal.get('manager_requisites', MANAGER_REQUISITES)
+        )
+        keyboard_for_creator = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
+            [InlineKeyboardButton(text="ПОКАЗАТЬ ПОДАРОК", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_{code}")],
+            [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
+            [InlineKeyboardButton(text=get_text(creator_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+    else:  # создатель - продавец, присоединился покупатель
+        text_for_creator = get_text(creator_id, 'deal_created_seller').format(
+            code=code,
+            manager_requisites=deal.get('manager_requisites', MANAGER_REQUISITES),
+            seller_deals=get_user_completed_deals(creator_id),
+            balance=get_user_balance(creator_id),
+            currency=deal['currency']
+        )
+        keyboard_for_creator = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Я передал подарок", icon_custom_emoji_id=CUSTOM_EMOJI_GIFT, callback_data=f"gift_sent_{code}")],
+            [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
+            [InlineKeyboardButton(text=get_text(creator_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+    await bot.send_message(creator_id, text_for_creator, parse_mode="HTML", reply_markup=keyboard_for_creator)
+
+    # Интерфейс для присоединившегося
     if role == 'buyer':
         text = get_text(user_id, 'deal_created_buyer').format(
             code=code,
@@ -1413,7 +1444,64 @@ async def join_deal(message: Message, user_id: int, code: str):
     await send_with_banner(message, text, keyboard)
     log_action(user_id, "join_deal", f"код {code}, роль {role}")
 
-# ---------- Действия со сделкой ----------
+# ---------- Обработчики, порядок важен: сначала gift_sent_, потом gift_ ----------
+@dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
+async def gift_sent(callback: types.CallbackQuery):
+    logging.info("✅ Обработчик gift_sent вызван")
+    try:
+        code = callback.data.split("_", 2)[2]
+        logging.info(f"✅ Извлечён код: {code}")
+        if code not in global_deals:
+            logging.error(f"❌ Код {code} не найден в global_deals")
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        user_id = callback.from_user.id
+        deal = global_deals[code]
+        if deal.get('gift_sent', False):
+            await callback.answer("Вы уже отправили подарок.", show_alert=True)
+            return
+        deal['gift_sent'] = True
+        buyer_id = deal['buyer']
+        seller_id = deal['seller']
+        if not buyer_id or not seller_id:
+            await callback.answer("Ошибка: не хватает участников.", show_alert=True)
+            return
+        buyer_username = "unknown"
+        seller_username = "unknown"
+        try:
+            buyer_user = await bot.get_chat(buyer_id)
+            buyer_username = buyer_user.username or str(buyer_id)
+        except:
+            pass
+        try:
+            seller_user = await bot.get_chat(seller_id)
+            seller_username = seller_user.username or str(seller_id)
+        except:
+            pass
+
+        admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
+            code=code,
+            buyer=buyer_username,
+            seller=seller_username,
+            amount=deal['amount'],
+            currency=deal['currency'],
+            description=deal['description']
+        )
+        admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Да, подарок пришёл", callback_data=f"confirm_gift_final_{code}")],
+            [InlineKeyboardButton(text="❌ Нет, попросить передать ещё раз", callback_data=f"reject_gift_{code}")]
+        ])
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
+        await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
+        log_action(user_id, "gift_sent", f"код {code}")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в gift_sent: {e}")
+        try:
+            await callback.answer("Произошла ошибка при отправке подарка.", show_alert=True)
+        except:
+            pass
+
 @dp.callback_query(lambda c: c.data.startswith("gift_"))
 async def show_gift_deal(callback: types.CallbackQuery):
     try:
@@ -1459,70 +1547,11 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
         except:
             pass
 
-# ---------- Изменённый обработчик "Я передал подарок" ----------
-@dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
-async def gift_sent(callback: types.CallbackQuery):
-    logging.info("✅ Обработчик gift_sent вызван")
-    try:
-        code = callback.data.split("_", 2)[2]
-        logging.info(f"✅ Извлечён код: {code}")
-        if code not in global_deals:
-            logging.error(f"❌ Код {code} не найден в global_deals")
-            await callback.answer("Сделка не найдена", show_alert=True)
-            return
-        user_id = callback.from_user.id
-        deal = global_deals[code]
-        if deal.get('gift_sent', False):
-            await callback.answer("Вы уже отправили подарок.", show_alert=True)
-            return
-        deal['gift_sent'] = True
-        buyer_id = deal['buyer']
-        seller_id = deal['seller']
-        if not buyer_id or not seller_id:
-            await callback.answer("Ошибка: не хватает участников.", show_alert=True)
-            return
-        buyer_username = "unknown"
-        seller_username = "unknown"
-        try:
-            buyer_user = await bot.get_chat(buyer_id)
-            buyer_username = buyer_user.username or str(buyer_id)
-        except:
-            pass
-        try:
-            seller_user = await bot.get_chat(seller_id)
-            seller_username = seller_user.username or str(seller_id)
-        except:
-            pass
-
-        # Новое сообщение админу с новыми кнопками
-        admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
-            code=code,
-            buyer=buyer_username,
-            seller=seller_username,
-            amount=deal['amount'],
-            currency=deal['currency'],
-            description=deal['description']
-        )
-        admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Да, подарок пришёл", callback_data=f"confirm_gift_final_{code}")],
-            [InlineKeyboardButton(text="❌ Нет, попросить передать ещё раз", callback_data=f"reject_gift_{code}")]
-        ])
-        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
-        await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
-        log_action(user_id, "gift_sent", f"код {code}")
-        await callback.answer()
-    except Exception as e:
-        logging.error(f"Ошибка в gift_sent: {e}")
-        try:
-            await callback.answer("Произошла ошибка при отправке подарка.", show_alert=True)
-        except:
-            pass
-
-# ---------- Новые обработчики админа для подарка ----------
+# ---------- Подтверждение/отклонение подарка админом ----------
 @dp.callback_query(lambda c: c.data.startswith("confirm_gift_final_"))
 async def confirm_gift_final(callback: types.CallbackQuery):
     try:
-        code = callback.data.split("_")[3]  # confirm_gift_final_{code}
+        code = callback.data.split("_")[3]
         user_id = callback.from_user.id
         if not is_admin(user_id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -1534,7 +1563,6 @@ async def confirm_gift_final(callback: types.CallbackQuery):
         if deal.get('completed', False):
             await callback.answer("Сделка уже завершена", show_alert=True)
             return
-        # Перевод денег продавцу
         seller_id = deal['seller']
         amount = deal['amount']
         if seller_id:
@@ -1562,7 +1590,7 @@ async def confirm_gift_final(callback: types.CallbackQuery):
 @dp.callback_query(lambda c: c.data.startswith("reject_gift_"))
 async def reject_gift(callback: types.CallbackQuery, state: FSMContext):
     try:
-        code = callback.data.split("_", 2)[2]  # reject_gift_{code}
+        code = callback.data.split("_", 2)[2]
         user_id = callback.from_user.id
         if not is_admin(user_id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -1597,10 +1625,7 @@ async def process_gift_reject(message: Message, state: FSMContext):
         await state.clear()
         return
     msg = message.text
-    # Отправляем продавцу сообщение с просьбой передать ещё раз
-    seller_msg = get_text(seller_id, 'gift_reject_seller').format(message=msg)
-    await bot.send_message(seller_id, seller_msg)
-    # Сбрасываем флаг передачи, чтобы продавец мог снова нажать "Я передал подарок"
+    await bot.send_message(seller_id, get_text(seller_id, 'gift_reject_seller').format(message=msg))
     deal = global_deals.get(code)
     if deal:
         deal['gift_sent'] = False
@@ -1748,7 +1773,7 @@ async def cb_transactions(callback: types.CallbackQuery):
         logging.error(f"Ошибка в transactions: {e}")
 
 # ============================================================
-# АДМИН-КОМАНДЫ (полный набор)
+# АДМИН-КОМАНДЫ
 # ============================================================
 
 ADMIN_ID = 8297446667
@@ -1780,7 +1805,6 @@ async def cmd_hyteam(message: types.Message):
     await send_with_banner(message, panel_text)
     log_action(user_id, "hyteam", "открытие админ-панели")
 
-# ---------- Новая команда /oplat ----------
 @dp.message(Command("oplat"))
 async def cmd_oplat(message: types.Message):
     user_id = message.from_user.id
@@ -1812,7 +1836,6 @@ async def cmd_oplat(message: types.Message):
     await message.answer(get_text(user_id, 'oplat_success').format(code=code, memo=memo))
     log_action(user_id, "oplat", f"код {code}, memo: {memo}")
 
-# ---------- Остальные админ-команды без изменений, но включены для полноты ----------
 @dp.message(Command("addbalance"))
 async def cmd_addbalance(message: types.Message):
     user_id = message.from_user.id
