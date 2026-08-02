@@ -1358,7 +1358,7 @@ async def show_gift_final(callback: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         logging.error(f"Ошибка в show_gift_final: {e}")
 
-# ---------- Присоединение к сделке (исправлено) ----------
+# ---------- Присоединение к сделке (ИСПРАВЛЕНО) ----------
 async def join_deal(message: Message, user_id: int, code: str):
     logging.info(f"✅ join_deal вызван для кода {code}, пользователь {user_id}")
     if code not in global_deals:
@@ -1368,18 +1368,20 @@ async def join_deal(message: Message, user_id: int, code: str):
     if deal['status'] != 'pending':
         await message.answer("Сделка уже завершена или неактивна.")
         return
-    role = deal['role']
-    if role == 'seller':
-        deal['seller'] = user_id
-        deal['status'] = 'active'
-    else:
-        deal['buyer'] = user_id
-        deal['status'] = 'active'
 
+    # Определяем роль создателя и присваиваем противоположную роль присоединяющемуся
+    if deal['role'] == 'buyer':
+        deal['seller'] = user_id   # создатель - покупатель, присоединяется продавец
+        joiner_role = 'seller'
+    else:
+        deal['buyer'] = user_id    # создатель - продавец, присоединяется покупатель
+        joiner_role = 'buyer'
+
+    deal['status'] = 'active'
     creator_id = deal['creator']
 
-    # Отправляем создателю его интерфейс, а не простое уведомление
-    if deal['role'] == 'buyer':  # создатель - покупатель, присоединился продавец
+    # Интерфейс для создателя (отправляем его роль)
+    if deal['role'] == 'buyer':
         text_for_creator = get_text(creator_id, 'deal_created_buyer').format(
             code=code,
             buyer_id=creator_id,
@@ -1395,7 +1397,7 @@ async def join_deal(message: Message, user_id: int, code: str):
             [InlineKeyboardButton(text="Отменить сделку", icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data=f"cancel_{code}")],
             [InlineKeyboardButton(text=get_text(creator_id, 'back_btn'), icon_custom_emoji_id=CUSTOM_EMOJI_BACK, callback_data="back_to_menu")]
         ])
-    else:  # создатель - продавец, присоединился покупатель
+    else:  # создатель - продавец
         text_for_creator = get_text(creator_id, 'deal_created_seller').format(
             code=code,
             manager_requisites=deal.get('manager_requisites', MANAGER_REQUISITES),
@@ -1410,8 +1412,8 @@ async def join_deal(message: Message, user_id: int, code: str):
         ])
     await bot.send_message(creator_id, text_for_creator, parse_mode="HTML", reply_markup=keyboard_for_creator)
 
-    # Интерфейс для присоединившегося
-    if role == 'buyer':
+    # Интерфейс для присоединившегося (используем joiner_role)
+    if joiner_role == 'buyer':
         text = get_text(user_id, 'deal_created_buyer').format(
             code=code,
             buyer_id=user_id,
@@ -1442,9 +1444,9 @@ async def join_deal(message: Message, user_id: int, code: str):
         ])
 
     await send_with_banner(message, text, keyboard)
-    log_action(user_id, "join_deal", f"код {code}, роль {role}")
+    log_action(user_id, "join_deal", f"код {code}, роль {joiner_role}")
 
-# ---------- Обработчики, порядок важен: сначала gift_sent_, потом gift_ ----------
+# ---------- Обработчики: сначала gift_sent_, потом gift_ ----------
 @dp.callback_query(lambda c: c.data.startswith("gift_sent_"))
 async def gift_sent(callback: types.CallbackQuery):
     logging.info("✅ Обработчик gift_sent вызван")
